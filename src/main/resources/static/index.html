@@ -88,17 +88,14 @@
             });
         }
 
-        // Отрисовка таблицы
         function renderTable(data) {
             const tbody = document.querySelector('#employeesTable tbody');
             tbody.innerHTML = '';
 
-            // Сортируем: сначала RED, потом YELLOW, потом GREEN
             data.sort((a, b) => b.riskProbability - a.riskProbability);
 
             data.forEach(emp => {
                 const tr = document.createElement('tr');
-                // Превращаем 0.8523 в 85.2%
                 const riskPercent = (emp.riskProbability * 100).toFixed(1) + '%';
 
                 tr.innerHTML = `
@@ -111,7 +108,6 @@
                 tbody.appendChild(tr);
             });
         }
-
         fetchBurnoutData();
     </script>
 </body>

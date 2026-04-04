@@ -30,7 +30,7 @@ public class JiraApiClient {
 
     public JiraSearchResponseDto fetchRecentTasks(int hoursAgo) {
         String jql = String.format("updated >= -%dh", hoursAgo);
-        String uri = "/rest/api/3/search?jql=" + jql + "&expand=changelog&fields=status,assignee,created,updated,comment&maxResults=1000";
+        String uri = "/rest/api/3/search/jql?jql=" + jql + "&expand=changelog&fields=status,assignee,created,updated,comment&maxResults=1000";
 
         try {
             log.info("Отправка запроса в Jira...");

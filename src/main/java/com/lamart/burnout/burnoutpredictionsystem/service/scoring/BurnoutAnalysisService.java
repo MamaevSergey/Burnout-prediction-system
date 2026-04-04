@@ -8,7 +8,6 @@ import com.lamart.burnout.burnoutpredictionsystem.repository.BurnoutScoreReposit
 import com.lamart.burnout.burnoutpredictionsystem.repository.DailyMetricRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;

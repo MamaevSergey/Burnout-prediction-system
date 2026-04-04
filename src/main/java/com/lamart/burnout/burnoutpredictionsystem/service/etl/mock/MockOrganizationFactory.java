@@ -4,7 +4,6 @@ import com.lamart.burnout.burnoutpredictionsystem.entity.Employee;
 import com.lamart.burnout.burnoutpredictionsystem.entity.Project;
 import com.lamart.burnout.burnoutpredictionsystem.entity.Team;
 import com.lamart.burnout.burnoutpredictionsystem.util.Anonymizer;
-import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;

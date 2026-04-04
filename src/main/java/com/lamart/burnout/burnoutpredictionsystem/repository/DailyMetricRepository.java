@@ -6,9 +6,11 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface DailyMetricRepository extends JpaRepository<DailyMetric, Long> {
     List<DailyMetric> findAllByEmployeeIdAndDateAfter(UUID employeeId, LocalDate date);
+    Optional<DailyMetric> findByEmployeeIdAndDate(UUID employeeId, LocalDate date);
 }

@@ -3,7 +3,9 @@ package com.lamart.burnout.burnoutpredictionsystem.controller;
 import com.lamart.burnout.burnoutpredictionsystem.dto.EmployeeDetailDto;
 import com.lamart.burnout.burnoutpredictionsystem.dto.EmployeeSummaryDto;
 import com.lamart.burnout.burnoutpredictionsystem.entity.MlModel;
+import com.lamart.burnout.burnoutpredictionsystem.repository.DailyMetricRepository;
 import com.lamart.burnout.burnoutpredictionsystem.repository.MlModelRepository;
+import com.lamart.burnout.burnoutpredictionsystem.scheduler.DailyEtlScheduler;
 import com.lamart.burnout.burnoutpredictionsystem.service.scoring.BurnoutAnalysisService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +22,8 @@ import java.util.UUID;
 public class BurnoutController {
     private final BurnoutAnalysisService analysisService;
     private final MlModelRepository mlModelRepository;
+    private final DailyMetricRepository dailyMetricRepository;
+    private final DailyEtlScheduler dailyEtlScheduler;
 
     @GetMapping("/summary")
     public List<EmployeeSummaryDto> getSummary() {
@@ -53,5 +57,11 @@ public class BurnoutController {
         mlModelRepository.save(newModel);
 
         return ResponseEntity.ok("Новые веса модели успешно применены. Начиная с завтрашнего дня расчет будет идти по ним.");
+    }
+
+    @GetMapping("/test-etl")
+    public ResponseEntity<String> forceRunEtl() {
+        dailyEtlScheduler.runNightlyPipeline();
+        return ResponseEntity.ok("Ночной пайплайн принудительно запущен! Информация по сбору данных будет отображена в логах");
     }
 }

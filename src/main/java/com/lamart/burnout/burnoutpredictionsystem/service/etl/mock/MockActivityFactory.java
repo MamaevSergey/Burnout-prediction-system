@@ -2,10 +2,8 @@ package com.lamart.burnout.burnoutpredictionsystem.service.etl.mock;
 
 import com.lamart.burnout.burnoutpredictionsystem.entity.*;
 import org.springframework.stereotype.Component;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -49,6 +47,7 @@ public class MockActivityFactory {
 
         GitPullRequest pr = new GitPullRequest();
         pr.setEmployee(emp);
+        pr.setExternalId("mock_pr_" + UUID.randomUUID().toString().substring(0, 8));
 
         LocalDateTime prMergedAt = shiftStart.plusHours(2 + random.nextInt(6));
         pr.setMergedAt(prMergedAt);

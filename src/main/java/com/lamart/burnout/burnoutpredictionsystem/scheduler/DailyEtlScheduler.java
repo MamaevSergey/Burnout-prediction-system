@@ -18,13 +18,13 @@ public class DailyEtlScheduler {
     private final MetricAggregationService aggregationService;
     private final ScoringEngineService scoringEngineService;
 
-    @PostConstruct // Убрать, это запустит сразу после старта
     @Scheduled(cron = "0 0 2 * * *")
     public void runNightlyPipeline() {
         log.info("Запуск ночного пайплайна аналитики");
 
         etlProcessorService.syncGithubCommits();
         etlProcessorService.syncJiraTasks();
+        etlProcessorService.syncGithubPullRequests();
 
         aggregationService.aggregateForYesterday();
         scoringEngineService.calculateScoresForToday();

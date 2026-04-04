@@ -16,6 +16,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
@@ -49,18 +51,20 @@ public class EtlProcessorService {
             Optional<Employee> employeeOpt = employeeRepository.findByGithubUsername(githubLogin);
 
             if (employeeOpt.isPresent()) {
+
+                if (gitCommitRepository.existsByExternalHash(dto.getSha())) {
+                    log.trace("Коммит {} уже существует. Пропускаем...", dto.getSha());
+                    continue;
+                }
+
                 GitCommit commit = new GitCommit();
                 commit.setExternalHash(dto.getSha());
                 commit.setEmployee(employeeOpt.get());
                 commit.setCommittedAt(dto.getCommit().getCommitter().getDate());
                 commit.setMessageLength(dto.getCommit().getMessage() != null ? dto.getCommit().getMessage().length() : 0);
 
-                try {
-                    gitCommitRepository.save(commit);
-                    savedCount++;
-                } catch (Exception e) {
-                    log.trace("Коммит {} уже существует", dto.getSha());
-                }
+                gitCommitRepository.save(commit);
+                savedCount++;
             } else {
                 log.debug("Пропущен коммит от неизвестного пользователя: {}", githubLogin);
             }
@@ -73,7 +77,7 @@ public class EtlProcessorService {
         JiraSearchResponseDto response = jiraApiClient.fetchRecentTasks(24);
 
         if (response == null || response.getIssues() == null) {
-            log.warn("Jira API вернул пустой ответ");
+            log.warn("Jira API вернул пустой ответ.");
             return;
         }
 
@@ -90,17 +94,25 @@ public class EtlProcessorService {
             Optional<Employee> employeeOpt = employeeRepository.findById(employeeId);
 
             if (employeeOpt.isPresent()) {
-                JiraTask task = new JiraTask();
+                JiraTask task = jiraTaskRepository.findByExternalId(issue.getKey())
+                        .orElseGet(JiraTask::new);
                 task.setExternalId(issue.getKey());
                 task.setEmployee(employeeOpt.get());
-                task.setStatus(issue.getFields().getStatus() != null ? issue.getFields().getStatus().getName() : "Unknow");
-
+                task.setStatus(issue.getFields().getStatus() != null ? issue.getFields().getStatus().getName() : "Unknown");
+                DateTimeFormatter jiraFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
                 try {
-                    jiraTaskRepository.save(task);
-                    savedCount++;
-                } catch (Exception exception) {
-                    log.trace("Задача {} уже существует", issue.getKey());
+                    if (issue.getFields().getCreated() != null) {
+                        task.setCreatedAt(java.time.ZonedDateTime.parse(issue.getFields().getCreated(), jiraFormatter).toLocalDateTime());
+                    }
+                    if (issue.getFields().getUpdated() != null) {
+                        task.setUpdatedAt(java.time.ZonedDateTime.parse(issue.getFields().getUpdated(), jiraFormatter).toLocalDateTime());
+                    }
+                } catch (Exception e) {
+                    log.warn("Не удалось распарсить даты для задачи {}: {}", issue.getKey(), e.getMessage());
                 }
+
+                jiraTaskRepository.save(task);
+                savedCount++;
             } else {
                 log.debug("Пропущена задача {} от неизвестного email: {}", issue.getKey(), email);
             }
@@ -122,8 +134,15 @@ public class EtlProcessorService {
             Optional<Employee> employeeOpt = employeeRepository.findByGithubUsername(githubLogin);
 
             if (employeeOpt.isPresent()) {
+                String externalId = String.valueOf(dto.getNumber());
+
+                if (gitPullRequestRepository.existsByExternalId(externalId)) {
+                    log.trace("Pull Request {} уже существует. Пропускаем...", externalId);
+                    continue;
+                }
+
                 GitPullRequest pr = new GitPullRequest();
-                pr.setExternalId(String.valueOf(dto.getNumber()));
+                pr.setExternalId(externalId);
                 pr.setEmployee(employeeOpt.get());
                 pr.setCreatedAt(dto.getCreatedAt());
                 pr.setMergedAt(dto.getMergedAt());
@@ -131,12 +150,8 @@ public class EtlProcessorService {
                 long leadTimeMins = ChronoUnit.MINUTES.between(dto.getCreatedAt(), dto.getMergedAt());
                 pr.setLeadTimeMinutes((int) leadTimeMins);
 
-                try {
-                    gitPullRequestRepository.save(pr);
-                    savedCount++;
-                } catch (Exception exception) {
-                    log.trace("Pull Request {} уже существует", dto.getNumber());
-                }
+                gitPullRequestRepository.save(pr);
+                savedCount++;
             }
         }
         log.info("Синхронизация GitHub Pull Request завершена. Сохранено {} новых Pull Request", savedCount);
