@@ -6,9 +6,12 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 @Repository
 public interface BurnoutScoreRepository extends JpaRepository<BurnoutScore, Long> {
     @Query("SELECT b FROM BurnoutScore b WHERE b.calculatedAt = (SELECT MAX(b2.calculatedAt) FROM BurnoutScore b2 WHERE b2.employee = b.employee)")
     List<BurnoutScore> findLatestScores();
+    Optional<BurnoutScore> findFirstByEmployeeIdOrderByCalculatedAtDesc(UUID employeeId);
 }

@@ -12,4 +12,5 @@ import java.util.UUID;
 public interface GitCommitRepository extends JpaRepository<GitCommit, Long> {
     List<GitCommit> findAllByEmployeeIdAndCommittedAtBetween(UUID employeeId, LocalDateTime start, LocalDateTime end);
     boolean existsByExternalHash(String externalHash);
+    List<GitCommit> findAllByCommittedAtBetween(LocalDateTime start, LocalDateTime end);
 }

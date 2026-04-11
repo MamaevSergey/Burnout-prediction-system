@@ -78,10 +78,29 @@ CREATE TABLE burnout_scores (
     id BIGSERIAL PRIMARY KEY,
     employee_id UUID REFERENCES employees(id),
     model_id BIGINT REFERENCES ml_models(id),
+    target_date DATE NOT NULL,
     calculated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     ee_index FLOAT,
     dp_index FLOAT,
     rpa_index FLOAT,
     risk_probability FLOAT CHECK (risk_probability >= 0 AND risk_probability <= 1),
-    status_color VARCHAR(10)
+    status_color VARCHAR(10),
+    CONSTRAINT uk_burnout_score_emp_date UNIQUE (employee_id, target_date)
+);
+
+CREATE TABLE jira_task_comments (
+    id BIGSERIAL PRIMARY KEY,
+    task_id BIGINT REFERENCES jira_tasks(internal_id) ON DELETE CASCADE,
+    employee_id UUID REFERENCES employees(id), -- Кто оставил комментарий
+    created_at TIMESTAMP,
+    body_length INTEGER -- Длина комментария
+);
+
+CREATE TABLE jira_task_changelogs (
+    id BIGSERIAL PRIMARY KEY,
+    task_id BIGINT REFERENCES jira_tasks(internal_id) ON DELETE CASCADE,
+    field_name VARCHAR(100),
+    from_string VARCHAR(100),
+    to_string VARCHAR(100),
+    created_at TIMESTAMP
 );

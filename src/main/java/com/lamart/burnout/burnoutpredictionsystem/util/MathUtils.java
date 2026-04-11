@@ -26,6 +26,11 @@ public class MathUtils {
     }
 
     public static double sigmoid(double z) {
-        return 1.0 / (1.0 + Math.exp(-z));
+        if (z >= 0) {
+            return 1.0 / (1.0 + Math.exp(-z));
+        } else {
+            double ez = Math.exp(z);
+            return ez / (1.0 + ez);
+        }
     }
 }

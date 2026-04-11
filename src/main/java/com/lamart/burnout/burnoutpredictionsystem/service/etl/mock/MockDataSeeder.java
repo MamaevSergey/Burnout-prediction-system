@@ -6,6 +6,7 @@ import com.lamart.burnout.burnoutpredictionsystem.service.scoring.ScoringEngineS
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
@@ -19,6 +20,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@ConditionalOnProperty(name = "app.mock-data.enabled", havingValue = "true")
 public class MockDataSeeder {
     private final TeamRepository teamRepository;
     private final ProjectRepository projectRepository;
@@ -31,57 +33,63 @@ public class MockDataSeeder {
     private final MockOrganizationFactory orgFactory;
     private final MockActivityFactory activityFactory;
     private final MlModelRepository mlModelRepository;
+    private final JiraTaskCommentRepository jiraTaskCommentRepository;
+    private final JiraTaskChangelogRepository jiraTaskChangelogRepository;
     private final Random random = new Random();
 
     @EventListener(ApplicationReadyEvent.class)
     @Transactional
     public void seedDatabase() {
         if (employeeRepository.count() > 0) {
-            log.info("База уже наполнена. Пропуск генерации.");
+            log.info("База данных уже содержит сотрудников, Mock-данные не будут загружены.");
             return;
         }
 
-        log.info("Запуск симуляции ETL...");
+        log.info("Начинаем генерацию Mock-данных...");
 
         seedBaselineMlModel();
 
         List<Team> teams = teamRepository.saveAll(orgFactory.createTeams());
         List<Project> projects = projectRepository.saveAll(orgFactory.createProjects());
-
         List<EmployeeProfile> profiles = orgFactory.createEmployees(teams);
+
         employeeRepository.saveAll(profiles.stream().map(EmployeeProfile::employee).toList());
 
         generateAndSaveLogs(profiles, projects);
 
-        log.info("Симуляция успешно завершена! Данные сохранены.");
-        log.info("Запуск первичного расчета выгорания по сгенерированным данным...");
-        scoringEngineService.calculateScoresForToday();
+        log.info("Генерация Mock-данных успешно завершена! Данные сохранены.");
+        scoringEngineService.calculateScores(LocalDate.now());
     }
 
     private void seedBaselineMlModel() {
-        if (mlModelRepository.count() == 0) {
-            MlModel baselineModel = new MlModel();
-            baselineModel.setW0Bias(-1.0);
-            baselineModel.setW1Ee(2.5);
-            baselineModel.setW2Dp(2.0);
-            baselineModel.setW3Rpa(1.5);
-            baselineModel.setActive(true);
-            baselineModel.setTrainedAt(LocalDateTime.now());
-
-            mlModelRepository.save(baselineModel);
-            log.info("Базова ML-модель успешно загружена в БД.");
+        if (mlModelRepository.count() > 0) {
+            log.info("ML-модели уже существуют в базе. Пропускаем инициализацию базовой модели.");
+            return;
         }
+
+        MlModel initialModel = new MlModel();
+        initialModel.setW0Bias(-2.5);
+        initialModel.setW1Ee(1.2);
+        initialModel.setW2Dp(0.8);
+        initialModel.setW3Rpa(0.5);
+        initialModel.setActive(true);
+        initialModel.setTrainedAt(LocalDateTime.now());
+
+        mlModelRepository.save(initialModel);
+        log.info("Базовая ML-модель успешно инициализирована.");
     }
 
     private void generateAndSaveLogs(List<EmployeeProfile> profiles, List<Project> projects) {
-        LocalDate startDate = LocalDate.now().minusDays(30);
         LocalDate endDate = LocalDate.now();
-
-        AtomicInteger taskSequence = new AtomicInteger(1000);
+        LocalDate startDate = endDate.minusDays(40);
+        Random random = new Random();
+        AtomicInteger taskSequence = new AtomicInteger(1);
 
         List<GitCommit> allCommits = new ArrayList<>();
         List<GitPullRequest> allPrs = new ArrayList<>();
         List<JiraTask> allTasks = new ArrayList<>();
+        List<JiraTaskComment> allComments = new ArrayList<>();
+        List<JiraTaskChangelog> allChangelogs = new ArrayList<>();
         List<DailyMetric> allMetrics = new ArrayList<>();
 
         for (LocalDate date = startDate; date.isBefore(endDate); date = date.plusDays(1)) {
@@ -101,6 +109,8 @@ public class MockDataSeeder {
                 allCommits.addAll(result.commits());
                 allPrs.add(result.pullRequest());
                 allTasks.add(result.jiraTask());
+                allComments.addAll(result.comments());
+                allChangelogs.addAll(result.changelogs());
                 allMetrics.add(result.dailyMetric());
             }
         }
@@ -109,6 +119,10 @@ public class MockDataSeeder {
         gitCommitRepository.saveAll(allCommits);
         gitPullRequestRepository.saveAll(allPrs);
         jiraTaskRepository.saveAll(allTasks);
+
+        log.info("Сохраняем сырые активности Jira: {} комментариев, {} смен статусов...", allComments.size(), allChangelogs.size());
+        jiraTaskCommentRepository.saveAll(allComments);
+        jiraTaskChangelogRepository.saveAll(allChangelogs);
 
         log.info("Сохраняем агрегированные метрики: {} дней работы...", allMetrics.size());
         dailyMetricRepository.saveAll(allMetrics);

@@ -33,10 +33,10 @@ public class BurnoutAnalysisService {
     }
 
     public EmployeeDetailDto getEmployeeDetail(UUID employeeId) {
-        BurnoutScore score = burnoutScoreRepository.findAll().stream()
-                .filter(s -> s.getEmployee().getId().equals(employeeId))
-                .reduce((first, second) -> second)
-                .orElseThrow(() -> new RuntimeException("Данные для сотрудника не найдены"));
+        BurnoutScore score = burnoutScoreRepository
+                .findFirstByEmployeeIdOrderByCalculatedAtDesc(employeeId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Данные для сотрудника не найдены: " + employeeId));
 
         List<DailyMetric> metrics = dailyMetricRepository.findAllByEmployeeIdAndDateAfter(employeeId, LocalDate.now().minusDays(30));
 

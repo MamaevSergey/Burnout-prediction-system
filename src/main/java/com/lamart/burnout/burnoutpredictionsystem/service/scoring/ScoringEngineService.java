@@ -10,8 +10,6 @@ import com.lamart.burnout.burnoutpredictionsystem.repository.EmployeeRepository;
 import com.lamart.burnout.burnoutpredictionsystem.repository.MlModelRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,9 +27,8 @@ public class ScoringEngineService {
     private final MlModelRepository mlModelRepository;
 
     @Transactional
-    public void calculateScoresForToday() {
-        LocalDate today = LocalDate.now();
-        log.info("Начинаем расчет выгорания для всех сотрудников на дату: {}", today);
+    public void calculateScores(LocalDate targetDate) {
+        log.info("Начинаем расчет выгорания для всех сотрудников на дату: {}", targetDate);
 
         MlModel activeModel = mlModelRepository.findByIsActiveTrue();
         if (activeModel == null) {
@@ -42,21 +39,30 @@ public class ScoringEngineService {
         List<Employee> employees = employeeRepository.findAll();
 
         for (Employee employee : employees) {
-            LocalDate monthAgo = today.minusDays(30);
+            LocalDate monthAgo = targetDate.minusDays(30);
 
             List<DailyMetric> history = dailyMetricRepository.findAllByEmployeeIdAndDateAfter(employee.getId(), monthAgo);
 
-            if (history.size() < 2) {
-                log.info("Недостаточно данных для анализа...");
+            DailyMetric targetMetric = history.stream()
+                    .filter(m -> m.getDate().equals(targetDate))
+                    .findFirst()
+                    .orElse(null);
+
+            // Изменен порог с 2 на 7 дней. Если оставить 2, то адекватно посчитать среднее отклонение не получится, модель будет выдавать случайный "шум"
+            if (history.size() < 7 || targetMetric == null) {
+                log.info("Недостаточно данных для оценки сотрудника {} (Холодный старт или нет метрик за {})", employee.getId(), targetDate);
                 continue;
             }
 
-            DailyMetric todayMetric = history.getLast();
-            List<DailyMetric> pastHistory = history.subList(0, history.size() - 1);
+            List<DailyMetric> pastHistory = history.stream()
+                    .filter(m -> m.getDate().isBefore(targetDate))
+                    .toList();
 
-            double eeIndex = calculateEEIndex(todayMetric, pastHistory);
-            double dpIndex = calculateDPIndex(todayMetric, pastHistory);
-            double rpaIndex = calculateRPAIndex(todayMetric, pastHistory);
+            if (pastHistory.isEmpty()) continue;
+
+            double eeIndex = calculateEEIndex(targetMetric, pastHistory);
+            double dpIndex = calculateDPIndex(targetMetric, pastHistory);
+            double rpaIndex = calculateRPAIndex(targetMetric, pastHistory);
 
             double zTotal = activeModel.getW0Bias() +
                     (activeModel.getW1Ee() * eeIndex) +
@@ -65,17 +71,16 @@ public class ScoringEngineService {
 
             double riskProbability = com.lamart.burnout.burnoutpredictionsystem.util.MathUtils.sigmoid(zTotal);
 
-            String statusColor = determineStatusColor(riskProbability);
-
             BurnoutScore score = new BurnoutScore();
             score.setEmployee(employee);
             score.setModel(activeModel);
+            score.setTargetDate(targetDate);
             score.setCalculatedAt(LocalDateTime.now());
             score.setEeIndex(eeIndex);
             score.setDpIndex(dpIndex);
             score.setRpaIndex(rpaIndex);
             score.setRiskProbability(riskProbability);
-            score.setStatusColor(statusColor);
+            score.setStatusColor(determineStatusColor(riskProbability));
 
             burnoutScoreRepository.save(score);
         }

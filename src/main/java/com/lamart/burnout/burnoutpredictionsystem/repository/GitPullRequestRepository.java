@@ -11,6 +11,6 @@ import java.util.UUID;
 @Repository
 public interface GitPullRequestRepository extends JpaRepository<GitPullRequest, Long> {
     boolean existsByExternalId(String externalId);
-
     List<GitPullRequest> findAllByEmployeeIdAndMergedAtBetween(UUID employeeId, LocalDateTime mergedAtAfter, LocalDateTime mergedAtBefore);
+    List<GitPullRequest> findAllByMergedAtBetween(LocalDateTime start, LocalDateTime end);
 }

@@ -8,7 +8,6 @@ import java.util.List;
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class JiraSearchResponseDto {
-    private int total;
     private List<JiraIssueDto> issues;
 
     @Data
@@ -16,6 +15,7 @@ public class JiraSearchResponseDto {
     public static class JiraIssueDto {
         private String key;
         private IssueFields fields;
+        private ChangelogDto changelog;
     }
 
     @Data
@@ -26,6 +26,14 @@ public class JiraSearchResponseDto {
         private StatusDto status;
         private AssigneeDto assignee;
         private CommentPageDto comment;
+        private List<AttachmentDto> attachment;
+    }
+
+    @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class AttachmentDto {
+        private AssigneeDto author;
+        private String created;
     }
 
     @Data
@@ -43,6 +51,35 @@ public class JiraSearchResponseDto {
     @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class CommentPageDto {
-        private int total;
+        private List<CommentDto> comments;
+    }
+
+    @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class CommentDto {
+        private AssigneeDto author;
+        private String body;
+        private String created;
+    }
+
+    @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class ChangelogDto {
+        private List<HistoryDto> histories;
+    }
+
+    @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class HistoryDto {
+        private String created;
+        private List<HistoryItemDto> items;
+    }
+
+    @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class HistoryItemDto {
+        private String field;
+        private String fromString;
+        private String toString;
     }
 }

@@ -10,6 +10,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @Slf4j
@@ -22,14 +24,15 @@ public class MetricAggregationService {
     private final JiraTaskRepository jiraTaskRepository;
     private final DailyMetricRepository dailyMetricRepository;
     private final GitPullRequestRepository gitPullRequestRepository;
+    private final JiraTaskCommentRepository commentRepository;
+    private final JiraTaskChangelogRepository changelogRepository;
 
     @Transactional
-    public void aggregateForYesterday() {
-        LocalDate yesterday = LocalDate.now().minusDays(1);
-        LocalDateTime startOfDay = yesterday.atStartOfDay();
-        LocalDateTime endOfDay = yesterday.atTime(LocalTime.MAX);
+    public void aggregateMetricForDate(LocalDate targetDate) {
+        LocalDateTime startOfDay = targetDate.atStartOfDay();
+        LocalDateTime endOfDay = targetDate.atTime(LocalTime.MAX);
 
-        log.info("Начинаем агрегацию метрик за {}", yesterday);
+        log.info("Начинаем агрегацию метрик за {}", targetDate);
 
         List<Employee> employees = employeeRepository.findAll();
         int metricsCreated = 0;
@@ -39,60 +42,90 @@ public class MetricAggregationService {
             List<JiraTask> tasks = jiraTaskRepository.findAllByEmployeeIdAndUpdatedAtBetween(emp.getId(), startOfDay, endOfDay);
             List<GitPullRequest> prs = gitPullRequestRepository.findAllByEmployeeIdAndMergedAtBetween(emp.getId(), startOfDay, endOfDay);
 
+            // Если активности не было вообще, пропускаем
             if (commits.isEmpty() && tasks.isEmpty() && prs.isEmpty()) continue;
 
-            DailyMetric metric = dailyMetricRepository.findByEmployeeIdAndDate(emp.getId(), yesterday)
+            DailyMetric metric = dailyMetricRepository.findByEmployeeIdAndDate(emp.getId(), targetDate)
                     .orElseGet(() -> {
                         DailyMetric newMetric = new DailyMetric();
                         newMetric.setEmployee(emp);
-                        newMetric.setDate(yesterday);
+                        newMetric.setDate(targetDate);
                         return newMetric;
                     });
-            
+
             int totalMsgLen = commits.stream().mapToInt(GitCommit::getMessageLength).sum();
             metric.setAvgCommitMsgLen(commits.isEmpty() ? 0 : totalMsgLen / commits.size());
 
-            long nightEvents = commits.stream().filter(c -> c.getCommittedAt().getHour() < 6).count() +
-                    tasks.stream().filter(t -> t.getUpdatedAt().getHour() < 6).count();
-            metric.setNightWorkSeconds((int) nightEvents * 3600);
-
-            boolean isWeekend = yesterday.getDayOfWeek().getValue() >= 6;
-            metric.setWeekendWorkSeconds(isWeekend ? 8 * 3600 : 0);
+            int commentsCount = commentRepository.countByEmployeeIdAndCreatedAtBetween(emp.getId(), startOfDay, endOfDay);
+            metric.setJiraCommentsCount(commentsCount);
 
             LocalDateTime firstEvent = getFirstEvent(commits, tasks, prs, endOfDay);
             LocalDateTime lastEvent = getLastEvent(commits, tasks, prs, startOfDay);
 
-            if (firstEvent.isBefore(lastEvent)) {
+            int totalWorkSeconds = 0;
+            if (!firstEvent.isAfter(lastEvent)) {
                 long workSeconds = ChronoUnit.SECONDS.between(firstEvent, lastEvent);
-                metric.setTotalWorkSeconds(workSeconds < 3600 ? 4 * 3600 : (int) workSeconds);
-            } else {
-                metric.setTotalWorkSeconds(8 * 3600);
+                totalWorkSeconds = workSeconds > (12 * 3600) ? (12 * 3600) : (int) workSeconds;
+                if (totalWorkSeconds < 3600) totalWorkSeconds = 3600;
             }
+            metric.setTotalWorkSeconds(totalWorkSeconds);
+
+            boolean isWeekend = targetDate.getDayOfWeek().getValue() >= 6;
+            metric.setWeekendWorkSeconds(isWeekend ? totalWorkSeconds : 0);
+
+            int nightWorkSeconds = calculateWorkSpanInWindow(commits, tasks, prs,
+                    targetDate.atTime(0, 0), targetDate.atTime(7, 0)) +
+                    calculateWorkSpanInWindow(commits, tasks, prs,
+                            targetDate.atTime(22, 0), targetDate.atTime(23, 59, 59));
+            metric.setNightWorkSeconds(nightWorkSeconds);
 
             double avgPrLead = prs.stream().mapToInt(GitPullRequest::getLeadTimeMinutes).average().orElse(0.0);
             metric.setPrLeadTimeAvg((int) avgPrLead);
 
-            long stagnantTasks = tasks.stream()
-                    .filter(t -> {
-                        String status = t.getStatus();
-                        return status != null && !status.equalsIgnoreCase("Done") && !status.equalsIgnoreCase("Готово");
+            long stagnationSecs = tasks.stream()
+                    .filter(t -> t.getStatus() != null && !isDoneStatus(t.getStatus()))
+                    .mapToLong(t -> {
+                        if (t.getCreatedAt() != null && t.getCreatedAt().isBefore(endOfDay)) {
+                            return ChronoUnit.SECONDS.between(t.getCreatedAt(), endOfDay);
+                        }
+                        return 0L;
                     })
-                    .count();
-            metric.setTaskStagnationSeconds((int) stagnantTasks * 3600);
+                    .sum();
+            metric.setTaskStagnationSeconds((int) stagnationSecs);
 
-            long reopenedTasks = tasks.stream()
-                    .filter(t -> {
-                        String status = t.getStatus();
-                        return status != null && (status.equalsIgnoreCase("In Progress") || status.equalsIgnoreCase("В работе"));
-                    })
-                    .count();
-            metric.setReopenRate((int) reopenedTasks);
+            int reopenCount = changelogRepository.countReopensByEmployee(emp.getId(), startOfDay, endOfDay);
+            metric.setReopenRate(reopenCount);
 
             dailyMetricRepository.save(metric);
             metricsCreated++;
         }
 
         log.info("Агрегация завершена. Сформировано/обновлено {} метрик за вчерашний день.", metricsCreated);
+    }
+
+    private boolean isDoneStatus(String status) {
+        return status.equalsIgnoreCase("Done") || status.equalsIgnoreCase("Готово") || status.equalsIgnoreCase("Closed");
+    }
+
+    private int calculateWorkSpanInWindow(List<GitCommit> commits, List<JiraTask> tasks, List<GitPullRequest> prs,
+                                          LocalDateTime windowStart, LocalDateTime windowEnd) {
+        List<LocalDateTime> events = new ArrayList<>();
+
+        commits.stream().map(GitCommit::getCommittedAt)
+                .filter(t -> !t.isBefore(windowStart) && t.isBefore(windowEnd)).forEach(events::add);
+        tasks.stream().map(JiraTask::getUpdatedAt)
+                .filter(t -> !t.isBefore(windowStart) && t.isBefore(windowEnd)).forEach(events::add);
+        prs.stream().map(GitPullRequest::getMergedAt)
+                .filter(t -> !t.isBefore(windowStart) && t.isBefore(windowEnd)).forEach(events::add);
+
+        if (events.isEmpty()) return 0;
+        if (events.size() == 1) return 1800;
+
+        LocalDateTime first = Collections.min(events);
+        LocalDateTime last = Collections.max(events);
+
+        long seconds = ChronoUnit.SECONDS.between(first, last);
+        return seconds < 1800 ? 1800 : (int) seconds;
     }
 
     private LocalDateTime getFirstEvent(List<GitCommit> commits, List<JiraTask> tasks, List<GitPullRequest> prs, LocalDateTime fallback) {
