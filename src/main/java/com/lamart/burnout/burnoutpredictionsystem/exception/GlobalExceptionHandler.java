@@ -15,8 +15,9 @@ import java.util.Map;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<Map<String, Object>> handleNotFound(IllegalArgumentException exception) {
-        return buildResponse(HttpStatus.NOT_FOUND, "Not Found", exception.getMessage());
+    public ResponseEntity<Map<String, Object>> handleBadRequest(IllegalArgumentException exception) {
+        log.warn("Bad Request: {}", exception.getMessage());
+        return buildResponse(HttpStatus.BAD_REQUEST, "Bad Request", exception.getMessage());
     }
 
     @ExceptionHandler(Exception.class)

@@ -1,8 +1,9 @@
 package com.lamart.burnout.burnoutpredictionsystem.integration.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
-
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 
 @Data
@@ -58,8 +59,16 @@ public class JiraSearchResponseDto {
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class CommentDto {
         private AssigneeDto author;
-        private String body;
+
+        @JsonProperty("body")
+        private java.util.Map<String, Object> rawBody;
+
         private String created;
+
+        @com.fasterxml.jackson.annotation.JsonIgnore
+        public String getBody() {
+            return rawBody != null ? rawBody.toString() : "";
+        }
     }
 
     @Data

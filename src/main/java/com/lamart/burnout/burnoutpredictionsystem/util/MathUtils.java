@@ -19,10 +19,10 @@ public class MathUtils {
     }
 
     public static double calculateZScore(int currentValue, double mean, double stdDev) {
-        if (stdDev == 0) {
-            return (currentValue == mean) ? 0.0 : (currentValue > mean ? 3.0 : -3.0);
-        }
-        return (currentValue - mean) / stdDev;
+        double effectiveStdDev = Math.max(stdDev, 1.0);
+        double zScore = (currentValue - mean) / effectiveStdDev;
+
+        return Math.max(-3.0, Math.min(3.0, zScore));
     }
 
     public static double sigmoid(double z) {

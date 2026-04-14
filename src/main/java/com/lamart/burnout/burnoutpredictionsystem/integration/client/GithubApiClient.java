@@ -3,6 +3,7 @@ package com.lamart.burnout.burnoutpredictionsystem.integration.client;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.lamart.burnout.burnoutpredictionsystem.integration.dto.GithubCommitDto;
 import com.lamart.burnout.burnoutpredictionsystem.integration.dto.GithubPullRequestDto;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -10,6 +11,7 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
@@ -41,6 +43,7 @@ public class GithubApiClient {
                 .build();
     }
 
+    @RateLimiter(name = "github")
     public List<String> fetchAllRepositories() {
         String uri = String.format("/orgs/%s/repos?per_page=100", repoOwner);
 
@@ -60,9 +63,13 @@ public class GithubApiClient {
         return Collections.emptyList();
     }
 
-    public List<GithubCommitDto> fetchRecentCommits(String repoName, LocalDateTime since) {
-        String uri = String.format("/repos/%s/%s/commits?since=%s&per_page=100",
-                repoOwner, repoName, since.format(DateTimeFormatter.ISO_DATE_TIME));
+    @RateLimiter(name = "github")
+    public List<GithubCommitDto> fetchCommitsForDate(String repoName, LocalDate targetDate) {
+        String since = targetDate.atStartOfDay().atOffset(java.time.ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT);
+        String until = targetDate.atTime(java.time.LocalTime.MAX).atOffset(java.time.ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT);
+
+        String uri = String.format("/repos/%s/%s/commits?since=%s&until=%s&per_page=100",
+                repoOwner, repoName, since, until);
 
         try {
             log.info("Запрашиваем коммиты из GitHub: {}", uri);
@@ -76,6 +83,7 @@ public class GithubApiClient {
         }
     }
 
+    @RateLimiter(name = "github")
     public List<GithubPullRequestDto> fetchRecentPullRequests(String repoName, LocalDateTime updatedAfter) {
         String uri = String.format("/repos/%s/%s/pulls?state=closed&sort=updated&direction=desc&per_page=100",
                 repoOwner, repoName);

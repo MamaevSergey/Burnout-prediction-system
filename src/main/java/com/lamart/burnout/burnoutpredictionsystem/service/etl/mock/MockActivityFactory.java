@@ -73,32 +73,32 @@ public class MockActivityFactory {
         task.setCreatedAt(shiftStart.minusDays(daysAgo).plusMinutes(randomStartOffset));
         task.setUpdatedAt(shiftEnd.plusMinutes(randomEndOffset));
 
-        // НОВЫЙ БЛОК: Создаем физические записи комментариев
+        // Физические записи комментариев
         List<JiraTaskComment> comments = new ArrayList<>();
         int commentsCount = profile.type() == ProfileType.DP_CYNICAL ? 0 : 2 + random.nextInt(5);
         for (int i = 0; i < commentsCount; i++) {
             JiraTaskComment comment = new JiraTaskComment();
-            comment.setTask(task); // Привязываем к задаче
-            comment.setEmployee(emp); // Привязываем к автору
+            comment.setTask(task); // Привязка к задаче
+            comment.setEmployee(emp); // Привязка к автору
             comment.setCreatedAt(shiftStart.plusMinutes(random.nextInt(workHours * 60)));
-            comment.setBodyLength(10 + random.nextInt(200)); // Генерируем длину текста
+            comment.setBodyLength(10 + random.nextInt(200)); // Длина текста (генератор)
             comments.add(comment);
         }
 
-        // НОВЫЙ БЛОК: Создаем физические записи истории статусов
+        // Физические записи истории статусов
         List<JiraTaskChangelog> changelogs = new ArrayList<>();
         int reopenCount = profile.type() == ProfileType.RPA_STAGNANT ? 2 + random.nextInt(3) : (random.nextInt(10) > 8 ? 1 : 0);
         for (int i = 0; i < reopenCount; i++) {
             JiraTaskChangelog changelog = new JiraTaskChangelog();
             changelog.setTask(task);
             changelog.setFieldName("status");
-            changelog.setFromString("Готово"); // БЫЛО "Done"
-            changelog.setToString("В работе"); // БЫЛО "In Progress"
+            changelog.setFromString("Готово");
+            changelog.setToString("В работе");
             changelog.setCreatedAt(shiftStart.plusMinutes(random.nextInt(workHours * 60)));
             changelogs.add(changelog);
         }
 
-        // Заполняем итоговую метрику за день ---
+        // Итоговая метрика за день
         DailyMetric metric = new DailyMetric();
         metric.setEmployee(emp);
         metric.setDate(date);

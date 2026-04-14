@@ -34,7 +34,7 @@ public class BurnoutAnalysisService {
 
     public EmployeeDetailDto getEmployeeDetail(UUID employeeId) {
         BurnoutScore score = burnoutScoreRepository
-                .findFirstByEmployeeIdOrderByCalculatedAtDesc(employeeId)
+                .findTopByEmployeeIdOrderByTargetDateDesc(employeeId)
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Данные для сотрудника не найдены: " + employeeId));
 

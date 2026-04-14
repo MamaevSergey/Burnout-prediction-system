@@ -9,17 +9,12 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public interface JiraTaskChangelogRepository extends JpaRepository<JiraTaskChangelog, Long> {
-    /*
-    @Query("SELECT COUNT(c) FROM JiraTaskChangelog c WHERE c.task.employee.id = :empId " +
-            "AND c.createdAt BETWEEN :start AND :end " +
-            "AND c.fieldName = 'status' " +
-            "AND (LOWER(c.fromString) IN ('done', 'closed', 'готово') OR LOWER(c.toString) IN ('in progress', 'в работе', 'reopened'))")
-    int countReopensByEmployee(@Param("empId") UUID employeeId, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
-     */
     @Query("SELECT c FROM JiraTaskChangelog c JOIN FETCH c.task t JOIN FETCH t.employee e " +
             "WHERE c.createdAt BETWEEN :start AND :end " +
             "AND c.fieldName = 'status' " +
             "AND (LOWER(c.fromString) IN ('done', 'closed', 'готово') OR LOWER(c.toString) IN ('in progress', 'в работе', 'reopened'))")
     List<JiraTaskChangelog> findReopensBetween(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
-    boolean existsByTaskIdAndFieldNameAndCreatedAt(Long taskId, String fieldName, LocalDateTime createdAt);
+
+    @Query("SELECT COUNT(c) > 0 FROM JiraTaskChangelog c WHERE c.task.internalId = :taskId AND c.fieldName = :fieldName AND c.createdAt = :createdAt")
+    boolean existsByTaskIdAndFieldNameAndCreatedAt(@Param("taskId") Long taskId, @Param("fieldName") String fieldName, @Param("createdAt") LocalDateTime createdAt);
 }

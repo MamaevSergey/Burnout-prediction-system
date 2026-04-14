@@ -1,5 +1,5 @@
 CREATE INDEX idx_burnout_scores_employee_date
-    ON burnout_scores(employee_id, calculated_at DESC);
+    ON burnout_scores(employee_id, target_date DESC);
 
 CREATE INDEX idx_daily_metrics_employee_date
     ON daily_metrics(employee_id, date DESC);

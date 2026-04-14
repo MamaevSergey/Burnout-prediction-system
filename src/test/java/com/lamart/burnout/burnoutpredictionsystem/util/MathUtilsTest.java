@@ -45,8 +45,9 @@ public class MathUtilsTest {
     @Test
     void testCalculateZScoreStdDev() {
         assertEquals(0.0, MathUtils.calculateZScore(5, 5.0, 0.0), "Если равно среднему, то 0.0");
-        assertEquals(3.0, MathUtils.calculateZScore(7, 5.0, 0.0), "Если больше среднего при stdDev=0, то 3.0 (выброс)");
-        assertEquals(-3.0, MathUtils.calculateZScore(2, 5.0, 0.0), "Если меньше среднего при stdDev=0, то -3.0 (выброс)");
+        assertEquals(2.0, MathUtils.calculateZScore(7, 5.0, 0.0), "Мягкий расчет: (7-5)/1.0 = 2.0");
+        assertEquals(-3.0, MathUtils.calculateZScore(2, 5.0, 0.0), "Мягкий расчет: (2-5)/1.0 = -3.0");
+        assertEquals(3.0, MathUtils.calculateZScore(10, 5.0, 0.0), "Ограничение максимума (кап 3.0): (10-5)/1.0 -> 3.0");
     }
 
     @Test

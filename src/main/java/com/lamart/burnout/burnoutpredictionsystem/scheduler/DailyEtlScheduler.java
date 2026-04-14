@@ -23,11 +23,15 @@ public class DailyEtlScheduler {
     @Scheduled(cron = "0 0 2 * * *")
     public void runNightlyPipeline() {
         log.info("Запуск ночного пайплайна аналитики");
+        // Раскомментировать для prod
         LocalDate targetDate = LocalDate.now().minusDays(1);
 
-        etlProcessorService.syncGithubCommits();
-        etlProcessorService.syncJiraTasks();
-        etlProcessorService.syncGithubPullRequests();
+        // Для теста
+        // LocalDate targetDate = LocalDate.now();
+
+        etlProcessorService.syncGithubCommits(targetDate);
+        etlProcessorService.syncJiraTasks(targetDate);
+        etlProcessorService.syncGithubPullRequests(targetDate);
 
         aggregationService.aggregateMetricForDate(targetDate);
         scoringEngineService.calculateScores(targetDate);

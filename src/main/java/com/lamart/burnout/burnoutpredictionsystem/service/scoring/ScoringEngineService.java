@@ -8,14 +8,20 @@ import com.lamart.burnout.burnoutpredictionsystem.repository.BurnoutScoreReposit
 import com.lamart.burnout.burnoutpredictionsystem.repository.DailyMetricRepository;
 import com.lamart.burnout.burnoutpredictionsystem.repository.EmployeeRepository;
 import com.lamart.burnout.burnoutpredictionsystem.repository.MlModelRepository;
+import com.lamart.burnout.burnoutpredictionsystem.util.MathUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -25,6 +31,12 @@ public class ScoringEngineService {
     private final DailyMetricRepository dailyMetricRepository;
     private final BurnoutScoreRepository burnoutScoreRepository;
     private final MlModelRepository mlModelRepository;
+
+    @Value("${app.scoring.threshold.green}")
+    private double greenThreshold;
+
+    @Value("${app.scoring.threshold.yellow}")
+    private double yellowThreshold;
 
     @Transactional
     public void calculateScores(LocalDate targetDate) {
@@ -37,11 +49,15 @@ public class ScoringEngineService {
         }
 
         List<Employee> employees = employeeRepository.findAll();
+        LocalDate monthAgo = targetDate.minusDays(30);
+
+        List<DailyMetric> allHistoryMetrics = dailyMetricRepository.findAllByDateBetween(monthAgo, targetDate);
+        Map<UUID, List<DailyMetric>> metricsByEmployee = allHistoryMetrics.stream()
+                .collect(Collectors.groupingBy(m -> m.getEmployee().getId()));
+        List<BurnoutScore> scoresToSave = new ArrayList<>();
 
         for (Employee employee : employees) {
-            LocalDate monthAgo = targetDate.minusDays(30);
-
-            List<DailyMetric> history = dailyMetricRepository.findAllByEmployeeIdAndDateAfter(employee.getId(), monthAgo);
+            List<DailyMetric> history = metricsByEmployee.getOrDefault(employee.getId(), new ArrayList<>());
 
             DailyMetric targetMetric = history.stream()
                     .filter(m -> m.getDate().equals(targetDate))
@@ -60,16 +76,18 @@ public class ScoringEngineService {
 
             if (pastHistory.isEmpty()) continue;
 
-            double eeIndex = calculateEEIndex(targetMetric, pastHistory);
-            double dpIndex = calculateDPIndex(targetMetric, pastHistory);
-            double rpaIndex = calculateRPAIndex(targetMetric, pastHistory);
+            List<DailyMetric> continuousHistory = padHistoryWithZeros(pastHistory, monthAgo, targetDate.minusDays(1), employee);
+
+            double eeIndex = calculateEEIndex(targetMetric, continuousHistory);
+            double dpIndex = calculateDPIndex(targetMetric, continuousHistory);
+            double rpaIndex = calculateRPAIndex(targetMetric, continuousHistory);
 
             double zTotal = activeModel.getW0Bias() +
                     (activeModel.getW1Ee() * eeIndex) +
                     (activeModel.getW2Dp() * dpIndex) +
                     (activeModel.getW3Rpa() * rpaIndex);
 
-            double riskProbability = com.lamart.burnout.burnoutpredictionsystem.util.MathUtils.sigmoid(zTotal);
+            double riskProbability = MathUtils.sigmoid(zTotal);
 
             BurnoutScore score = new BurnoutScore();
             score.setEmployee(employee);
@@ -82,10 +100,11 @@ public class ScoringEngineService {
             score.setRiskProbability(riskProbability);
             score.setStatusColor(determineStatusColor(riskProbability));
 
-            burnoutScoreRepository.save(score);
+            scoresToSave.add(score);
         }
 
-        log.info("Расчет выгорания успешно завершен. Результаты сохранены в БД.");
+        burnoutScoreRepository.saveAll(scoresToSave);
+        log.info("Расчет выгорания успешно завершен. Сохранено оценок: {}", scoresToSave.size());
     }
 
     private double calculateEEIndex(DailyMetric today, List<DailyMetric> history) {
@@ -117,9 +136,27 @@ public class ScoringEngineService {
         return com.lamart.burnout.burnoutpredictionsystem.util.MathUtils.calculateZScore(todayValue, mean, stdDev);
     }
 
+    private List<DailyMetric> padHistoryWithZeros(List<DailyMetric> actualHistory, LocalDate startDate, LocalDate endDate, Employee employee) {
+        Map<LocalDate, DailyMetric> historyMap = actualHistory.stream()
+                .collect(Collectors.toMap(DailyMetric::getDate, m -> m));
+
+        List<DailyMetric> paddedHistory = new ArrayList<>();
+        for (LocalDate d = startDate; !d.isAfter(endDate); d = d.plusDays(1)) {
+            if (historyMap.containsKey(d)) {
+                paddedHistory.add(historyMap.get(d));
+            } else {
+                DailyMetric zeroMetric = new DailyMetric();
+                zeroMetric.setEmployee(employee);
+                zeroMetric.setDate(d);
+                paddedHistory.add(zeroMetric);
+            }
+        }
+        return paddedHistory;
+    }
+
     private String determineStatusColor(double probability) {
-        if (probability < 0.40) return "GREEN";
-        if (probability < 0.75) return "YELLOW";
+        if (probability < greenThreshold) return "GREEN";
+        if (probability < yellowThreshold) return "YELLOW";
         return "RED";
     }
 }

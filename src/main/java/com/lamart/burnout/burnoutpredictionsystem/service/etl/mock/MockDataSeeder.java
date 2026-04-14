@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.annotation.Profile;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import java.time.LocalDate;
@@ -21,6 +22,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Service
 @RequiredArgsConstructor
 @ConditionalOnProperty(name = "app.mock-data.enabled", havingValue = "true")
+@Profile("!prod")
 public class MockDataSeeder {
     private final TeamRepository teamRepository;
     private final ProjectRepository projectRepository;
@@ -58,7 +60,7 @@ public class MockDataSeeder {
         generateAndSaveLogs(profiles, projects);
 
         log.info("Генерация Mock-данных успешно завершена! Данные сохранены.");
-        scoringEngineService.calculateScores(LocalDate.now());
+        scoringEngineService.calculateScores(LocalDate.now().minusDays(1));
     }
 
     private void seedBaselineMlModel() {

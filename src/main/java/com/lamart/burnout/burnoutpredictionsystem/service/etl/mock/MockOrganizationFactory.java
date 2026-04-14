@@ -4,6 +4,7 @@ import com.lamart.burnout.burnoutpredictionsystem.entity.Employee;
 import com.lamart.burnout.burnoutpredictionsystem.entity.Project;
 import com.lamart.burnout.burnoutpredictionsystem.entity.Team;
 import com.lamart.burnout.burnoutpredictionsystem.util.Anonymizer;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -11,8 +12,10 @@ import java.util.List;
 import java.util.Random;
 
 @Component
+@RequiredArgsConstructor
 public class MockOrganizationFactory {
     private final Random random = new Random();
+    private final Anonymizer anonymizer;
 
     public List<Team> createTeams() {
         return List.of(
@@ -47,13 +50,8 @@ public class MockOrganizationFactory {
         for (int i = 1; i <= 60; i++) {
             Employee e = new Employee();
 
-            if (i == 1) {
-                e.setId(Anonymizer.hashToUuid("1hirokoae@gmail.com"));
-                e.setGithubUsername("MamaevSergey");
-            } else {
-                e.setId(Anonymizer.hashToUuid("developer_" + i + "@lamart.ru"));
-                e.setGithubUsername("dev" + i + "_lamart");
-            }
+            e.setId(anonymizer.hashToUuid("developer_" + i + "@lamart.ru"));
+            e.setGithubUsername("dev" + i + "_lamart");
 
             e.setTeam(teams.get(random.nextInt(teams.size())));
             e.setRole("Developer");

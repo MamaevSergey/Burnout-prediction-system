@@ -11,7 +11,6 @@ import java.util.UUID;
 
 @Repository
 public interface JiraTaskRepository extends JpaRepository<JiraTask, Long> {
-    List<JiraTask> findAllByEmployeeIdAndUpdatedAtBetween(UUID employeeId, LocalDateTime start, LocalDateTime end);
     Optional<JiraTask> findByExternalId(String externalId);
     List<JiraTask> findAllByUpdatedAtBetween(LocalDateTime start, LocalDateTime end);
 }
