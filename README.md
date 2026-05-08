@@ -18,7 +18,7 @@ nano docker-compose.yml
 **В `db` задайте `POSTGRES_USER` и `POSTGRES_PASSWORD`.**
 `POSTGRES_DB` можно оставить по умолчанию.
 
-![[Pasted image 20260508185208.png]]
+<img width="376" height="284" alt="image" src="https://github.com/user-attachments/assets/82f06235-fe85-4b36-b7b8-e90013ce4823" />
 
 --------
 
@@ -32,8 +32,7 @@ nano docker-compose.yml
    Мой пример: `T9x#m2PqL8z!vW4bY7k@nC5rA1fJ6sH3`
 6. Придумайте и напишите `HASH_SALT`, она будет использоваться для хеширования emails.
 
-![[Pasted image 20260508185331.png]]
-
+<img width="559" height="481" alt="image" src="https://github.com/user-attachments/assets/46c996a1-9e7e-4804-ae0d-8049ee94bba2" />
 
 # 3. Запуск системы
 
@@ -66,9 +65,9 @@ docker compose up -d --build
 		- `read:jira-work` (чтение задач, спринтов, комментариев)
 	    - `read:jira-user` (чтение профилей пользователей для привязки метрик)
 
-![[Pasted image 20260508195509.png]]
+<img width="601" height="699" alt="image" src="https://github.com/user-attachments/assets/1ed181fe-1b85-4407-a447-e33d8bd86864" />
 
-![[Pasted image 20260508195723.png]]
+<img width="837" height="572" alt="image" src="https://github.com/user-attachments/assets/db32f004-f707-4208-bc3c-3d2a3dbbb2dd" />
 
 ## Интеграция с GitHub
 
@@ -76,7 +75,7 @@ docker compose up -d --build
 - **API Token (Personal Access Token):** Создайте Fine-grained Token в настройках GitHub.
 	- Необходимые доступы (Scopes) для сбора метрик:
 
-![[Pasted image 20260508200227.png]]
+<img width="755" height="446" alt="image" src="https://github.com/user-attachments/assets/aa475efa-6015-42b0-85af-45d877077b21" />
 
 ## Настройка кастомных статусов (Jira Task)
 
