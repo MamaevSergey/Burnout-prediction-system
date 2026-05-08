@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -23,12 +24,11 @@ public class BurnoutScore {
     @JoinColumn(name = "model_id")
     private MlModel model;
 
+    private LocalDate targetDate;
     private LocalDateTime calculatedAt;
-
     private Double eeIndex;
     private Double dpIndex;
     private Double rpaIndex;
     private Double riskProbability;
-
     private String statusColor;
 }

@@ -14,16 +14,24 @@ import java.util.Map;
 @ControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<Map<String, Object>> handleRuntimeException(RuntimeException exception) {
-        log.error("API Error: {}", exception.getMessage());
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, Object>> handleBadRequest(IllegalArgumentException exception) {
+        log.warn("Bad Request: {}", exception.getMessage());
+        return buildResponse(HttpStatus.BAD_REQUEST, "Bad Request", exception.getMessage());
+    }
 
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Map<String, Object>> handleGenericException(Exception exception) {
+        log.error("Internal Server Error: ", exception);
+        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Internal Error", "Произошла внутренняя ошибка сервера");
+    }
+
+    private ResponseEntity<Map<String, Object>> buildResponse(HttpStatus status, String error, String message) {
         Map<String, Object> body = new HashMap<>();
         body.put("timestamp", LocalDateTime.now());
-        body.put("status", HttpStatus.NOT_FOUND.value());
-        body.put("error", "Not Found");
-        body.put("message", exception.getMessage());
-
-        return new ResponseEntity<>(body, HttpStatus.NOT_FOUND);
+        body.put("status", status.value());
+        body.put("error", error);
+        body.put("message", message);
+        return new ResponseEntity<>(body, status);
     }
 }

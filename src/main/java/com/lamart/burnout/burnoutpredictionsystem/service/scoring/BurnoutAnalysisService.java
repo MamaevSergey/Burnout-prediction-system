@@ -11,7 +11,6 @@ import com.lamart.burnout.burnoutpredictionsystem.repository.GitCommitRepository
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -39,10 +38,10 @@ public class BurnoutAnalysisService {
     }
 
     public EmployeeDetailDto getEmployeeDetail(UUID employeeId) {
-        BurnoutScore score = burnoutScoreRepository.findAll().stream()
-                .filter(s -> s.getEmployee().getId().equals(employeeId))
-                .reduce((first, second) -> second)
-                .orElseThrow(() -> new RuntimeException("Данные для сотрудника не найдены"));
+        BurnoutScore score = burnoutScoreRepository
+                .findTopByEmployeeIdOrderByTargetDateDesc(employeeId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Данные для сотрудника не найдены: " + employeeId));
 
         LocalDate targetDate = score.getTargetDate();
         LocalDate startDate = targetDate.minusDays(30);
