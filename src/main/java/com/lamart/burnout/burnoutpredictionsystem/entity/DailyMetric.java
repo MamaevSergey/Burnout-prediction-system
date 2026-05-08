@@ -16,22 +16,24 @@ public class DailyMetric {
     private Long id;
 
     @ManyToOne
-    @JoinColumn(name = "employee_id")
+    @JoinColumn(name = "employee_id", nullable = false)
     private Employee employee;
 
+    @Column(nullable = false)
     private LocalDate date;
 
     // EE
-    private int nightWorkSeconds;
-    private int weekendWorkSeconds;
-    private int totalWorkSeconds;
+    private long activitySpanSeconds;
+    private int nightEventsCount;
+    private int weekendEventsCount;
 
     // DP
-    private int avgCommitMsgLen;
-    private int jiraCommentsCount;
+    private double badCommitRatio;
+    private int jiraEffortScore;
 
     // RPA
-    private int prLeadTimeAvg;
-    private int reopenRate;
-    private int taskStagnationSeconds;
+    private double prLeadTimeAvgMinutes;
+    private long taskStagnationSeconds;
+    private double reopenRate;
+    private int mergeConflictsCount;
 }

@@ -24,5 +24,7 @@ public class GitPullRequest {
 
     private LocalDateTime createdAt;
     private LocalDateTime mergedAt;
+    private LocalDateTime closedAt;
+    private String mergeableState;
     private Integer leadTimeMinutes;
 }

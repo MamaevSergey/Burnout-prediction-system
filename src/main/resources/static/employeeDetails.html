@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html class="light" lang="ru">
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <style>html.auth-pending body { visibility: hidden; }</style>
+    <script>document.documentElement.classList.add('auth-pending');</script>
+    <script src="js/auth.js"></script>
+    <script>window.BPSAuth.guardProtectedPage('login.html');</script>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <title>Детальная информация по сотруднику - LamartBPS</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="css/employeeDetails.css" />
+    <link rel="icon" href="images/lamart.svg" type="image/svg+xml">
+    <script id="tailwind-config" src="js/employeeDetails-tailwind-config.js"></script>
+</head>
+
+<body
+    class="bg-surface text-on-surface font-body selection:bg-secondary-container selection:text-on-secondary-container">
+    <header
+        class="sticky top-0 w-full z-50 bg-[#fbf8ff]/70 dark:bg-[#171a2f]/70 backdrop-blur-3xl shadow-[0px_20px_40px_rgba(23,26,47,0.06)]">
+        <nav class="flex items-center justify-between px-10 h-20 max-w-[1920px] mx-auto">
+            <div class="flex items-center gap-8">
+                <span class="text-xl font-black tracking-tighter text-[#171a2f] dark:text-[#fbf8ff]">LamartBPS</span>
+                <div class="hidden md:flex items-center gap-6 font-['Inter'] tracking-[-0.02em] font-medium">
+                    <div class="flex items-center gap-4">
+                    </div>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <button class="hidden p-2 text-[#404753] active:scale-95 transition-transform ease-out">
+                    <span class="hidden material-symbols-outlined" data-icon="notifications">notifications</span>
+                </button>
+                <button id="settingsBtn" class="p-2 text-[#404753] active:scale-95 transition-transform ease-out">
+                    <span class="material-symbols-outlined" data-icon="settings">settings</span>
+                </button>
+                <div class="relative">
+                    <button id="user-avatar-btn" class="block h-8 w-8 md:h-10 md:w-10 rounded-full overflow-hidden bg-surface-container-highest border-2 border-primary-container/20 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all hover:scale-105 active:scale-95">
+                        <img alt="User Profile" class="h-full w-full object-cover" src="images/avatar.png" />
+                    </button>
+                    <div id="user-dropdown-menu" class="hidden absolute right-0 mt-2 w-48 bg-surface-container-lowest border border-outline-variant/20 rounded-xl shadow-[0px_10px_20px_rgba(23,26,47,0.1)] z-50 overflow-hidden">
+                        <button id="logout-btn" class="w-full text-left px-4 py-3 text-sm font-bold text-error hover:bg-error-container/20 transition-colors flex items-center gap-3">
+                            <span class="material-symbols-outlined text-error text-lg">logout</span>
+                            Выйти из системы
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+    <main class="max-w-7xl mx-auto px-8 py-12">
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-end mb-16 gap-8">
+            <div class="space-y-2">
+                <span class="text-sm font-bold tracking-widest text-on-surface-variant uppercase">Профиль сотрудника</span>
+                <h1 class="text-5xl font-black tracking-tight text-on-surface" id="employee-id-title">#USR-9842-X</h1>
+                <div class="flex gap-4 mt-6">
+                    <button class="px-8 py-3 bg-gradient-to-r from-primary to-secondary text-white font-bold rounded-xl active:scale-95 transition-transform shadow-lg shadow-primary/20" id="refresh-score-btn">Пересчитать баллы</button>
+                    <button class="px-8 py-3 bg-surface-container-high text-on-surface font-bold rounded-xl active:scale-95 transition-transform" id="back-to-dashboard-btn">Вернуться обратно</button>
+                </div>
+                <p class="text-error text-sm font-medium mt-2 hidden" id="details-error"></p>
+            </div>
+            <div
+                class="glass-panel p-8 rounded-lg border-l-8 border-error flex flex-col items-end shadow-[0px_20px_40px_rgba(23,26,47,0.06)]">
+                <span class="text-on-surface-variant font-medium mb-1">Фактор риска выгорания</span>
+                <div class="flex items-baseline gap-2">
+                    <span class="text-6xl font-black text-error" id="risk-percent"></span>
+                    <span class="text-xl font-bold text-error" id="risk-label"></span>
+                </div>
+                <div class="w-full h-2 bg-surface-container-highest rounded-full mt-4 overflow-hidden">
+                    <div class="h-full bg-error rounded-full" id="risk-progress" style="width: 68%"></div>
+                </div>
+            </div>
+        </header>
+        <section class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+            <div
+                class="bg-surface-container-lowest p-8 rounded-lg shadow-[0px_20px_40px_rgba(23,26,47,0.06)] group hover:translate-y-[-4px] transition-all">
+                <div class="flex justify-between items-start mb-6">
+                    <div>
+                        <h3 class="text-on-surface-variant font-bold text-sm tracking-wide uppercase">EE Index</h3>
+                        <p class="text-xs text-outline">Эмоциональное истощение</p>
+                    </div>
+                    <span class="material-symbols-outlined text-secondary text-3xl">psychology</span>
+                </div>
+                <div class="flex items-end justify-between">
+                    <span class="text-4xl font-black text-on-surface" id="ee-index-value"></span>
+                    <div class="flex items-end gap-1 h-12">
+                        <div class="w-1 bg-secondary/20 h-[40%] rounded-full"></div>
+                        <div class="w-1 bg-secondary/30 h-[60%] rounded-full"></div>
+                        <div class="w-1 bg-secondary/40 h-[50%] rounded-full"></div>
+                        <div class="w-1 bg-secondary/60 h-[80%] rounded-full"></div>
+                        <div class="w-1 bg-secondary h-[90%] rounded-full"></div>
+                    </div>
+                </div>
+            </div>
+            <div
+                class="bg-surface-container-lowest p-8 rounded-lg shadow-[0px_20px_40px_rgba(23,26,47,0.06)] group hover:translate-y-[-4px] transition-all">
+                <div class="flex justify-between items-start mb-6">
+                    <div>
+                        <h3 class="text-on-surface-variant font-bold text-sm tracking-wide uppercase">DP Index</h3>
+                        <p class="text-xs text-outline">Деперсонализация</p>
+                    </div>
+                    <span class="material-symbols-outlined text-primary text-3xl">distance</span>
+                </div>
+                <div class="flex items-end justify-between">
+                    <span class="text-4xl font-black text-on-surface" id="dp-index-value"></span>
+                    <div class="flex items-end gap-1 h-12">
+                        <div class="w-1 bg-primary/20 h-[90%] rounded-full"></div>
+                        <div class="w-1 bg-primary/30 h-[70%] rounded-full"></div>
+                        <div class="w-1 bg-primary/40 h-[60%] rounded-full"></div>
+                        <div class="w-1 bg-primary/60 h-[40%] rounded-full"></div>
+                        <div class="w-1 bg-primary h-[30%] rounded-full"></div>
+                    </div>
+                </div>
+            </div>
+            <div
+                class="bg-surface-container-lowest p-8 rounded-lg shadow-[0px_20px_40px_rgba(23,26,47,0.06)] group hover:translate-y-[-4px] transition-all">
+                <div class="flex justify-between items-start mb-6">
+                    <div>
+                        <h3 class="text-on-surface-variant font-bold text-sm tracking-wide uppercase">RPA Index</h3>
+                        <p class="text-xs text-outline">Личные достижения</p>
+                    </div>
+                    <span class="material-symbols-outlined text-tertiary text-3xl">verified</span>
+                </div>
+                <div class="flex items-end justify-between">
+                    <span class="text-4xl font-black text-on-surface" id="rpa-index-value"></span>
+                    <div class="flex items-end gap-1 h-12">
+                        <div class="w-1 bg-tertiary/20 h-[30%] rounded-full"></div>
+                        <div class="w-1 bg-tertiary/30 h-[40%] rounded-full"></div>
+                        <div class="w-1 bg-tertiary/40 h-[60%] rounded-full"></div>
+                        <div class="w-1 bg-tertiary/60 h-[55%] rounded-full"></div>
+                        <div class="w-1 bg-tertiary h-[75%] rounded-full"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <section class="bg-surface-container-low p-12 rounded-lg relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-64 h-64 bg-secondary/5 rounded-full blur-3xl -mr-32 -mt-32"></div>
+            <h2 class="text-2xl font-black mb-8 tracking-tight text-on-surface">Журнал оперативной деятельности</h2>
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-6">
+                <div class="neumorphic-inset bg-surface/50 p-6 rounded-lg">
+                    <span class="text-[0.7rem] font-black uppercase text-outline tracking-widest block mb-2">PR Lead
+                        Time</span>
+                    <div class="flex items-center gap-2">
+                        <span class="text-2xl font-bold text-on-surface" id="pr-lead-time-value"></span>
+                        <span class="text-sm font-medium text-on-surface-variant">часов</span>
+                    </div>
+                </div>
+                <div class="neumorphic-inset bg-surface/50 p-6 rounded-lg">
+                    <span class="text-[0.7rem] font-black uppercase text-outline tracking-widest block mb-2">Weekend
+                        Work</span>
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-error"
+                            style="font-variation-settings: 'FILL' 1;">warning</span>
+                        <span class="text-2xl font-bold text-on-surface" id="weekend-work-value"></span>
+                    </div>
+                </div>
+                <div class="neumorphic-inset bg-surface/50 p-6 rounded-lg">
+                    <span class="text-[0.7rem] font-black uppercase text-outline tracking-widest block mb-2">Night
+                        Work</span>
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-outline">dark_mode</span>
+                        <span class="text-2xl font-bold text-on-surface" id="night-work-value"></span>
+                    </div>
+                </div>
+                <div class="neumorphic-inset bg-surface/50 p-6 rounded-lg">
+                    <span class="text-[0.7rem] font-black uppercase text-outline tracking-widest block mb-2">Reopen
+                        Rate</span>
+                    <div class="flex items-center gap-2">
+                        <span class="text-2xl font-bold text-on-surface" id="reopen-rate-value"></span>
+                        <span class="text-sm font-medium text-on-surface-variant">%</span>
+                    </div>
+                </div>
+                <div class="neumorphic-inset bg-surface/50 p-6 rounded-lg">
+                    <span class="text-[0.7rem] font-black uppercase text-outline tracking-widest block mb-2">Commits /
+                        Day</span>
+                    <div class="flex items-center gap-2">
+                        <span class="text-2xl font-bold text-on-surface" id="commits-per-day-value"></span>
+                        <span class="material-symbols-outlined text-primary-container text-sm" id="commits-trend-icon">trending_up</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <footer class="mt-12 flex justify-between items-center text-outline text-xs font-medium px-2" id="footer-model-info">
+            <div class="flex items-center gap-4">
+                <span></span>
+                <span>•</span>
+                <span></span>
+            </div>
+        </footer>
+    </main>
+    <div id="index-info-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm transition-all duration-300">
+        <div class="max-w-lg w-full bg-white border border-gray-200 rounded-3xl p-8 shadow-2xl relative">
+            <button id="close-index-modal" class="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 transition-colors">
+                <span class="material-symbols-outlined text-gray-500">close</span>
+            </button>
+
+            <div class="flex items-center gap-4 mb-6">
+                <div id="modal-icon-container" class="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-md">
+                    <span id="modal-icon" class="material-symbols-outlined text-2xl"></span>
+                </div>
+                <div>
+                    <h2 id="modal-title" class="text-xl font-black text-gray-900"></h2>
+                    <p id="modal-subtitle" class="text-xs text-gray-500 font-bold uppercase tracking-widest"></p>
+                </div>
+            </div>
+
+            <div class="space-y-6">
+                <section>
+                    <h3 class="text-xs font-black text-gray-400 uppercase mb-2">Что измеряет этот индекс?</h3>
+                    <p id="modal-description" class="text-sm text-gray-700 leading-relaxed"></p>
+                </section>
+
+                <div class="bg-slate-50 p-6 rounded-2xl border border-gray-200 shadow-inner">
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="text-xs font-bold text-gray-500 uppercase">Текущий индекс</span>
+                        <span id="modal-value-badge" class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wide"></span>
+                    </div>
+                    <div class="text-4xl font-black text-gray-900 mb-3" id="modal-current-value"></div>
+
+                    <div class="border-t border-gray-200 pt-3 mt-2">
+                        <p id="modal-analysis" class="text-sm text-gray-800 font-medium leading-relaxed"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="js/employeeDetails.js"></script>
+</body>
+</html>

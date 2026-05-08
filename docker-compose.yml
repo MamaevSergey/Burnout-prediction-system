@@ -1,10 +1,39 @@
 services:
   db:
-    image: postgres:15
-    container_name: burnout_db
+    image: postgres:15-alpine
+    container_name: burnout_postgres
+    restart: unless-stopped
     environment:
+      POSTGRES_USER: (имя)
+      POSTGRES_PASSWORD: (пароль от бд)
       POSTGRES_DB: burnout_system
-      POSTGRES_USER: dev
-      POSTGRES_PASSWORD: password
     ports:
       - "5435:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  app:
+    build: .
+    container_name: burnout_backend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/burnout_system
+      - SPRING_DATASOURCE_USERNAME=(имя)
+      - SPRING_DATASOURCE_PASSWORD=(пароль от бд)
+      - ADMIN_LOGIN=придумать логин
+      - ADMIN_PASSWORD=придумать пароль
+      - HR_LOGIN=придумать логин
+      - HR_PASSWORD=придумать пароль
+      - VIEWER_LOGIN=придумать логин
+      - VIEWER_PASSWORD=придумать пароль
+      - JWT_SECRET=сгенерировать jwt secret
+      - MASTER_KEY=сделать мастер ключ
+      - HASH_SALT=указать соль
+      - PROFILE=prod
+
+volumes:
+  postgres_data:
