@@ -6,9 +6,8 @@ import java.util.List;
 
 public record DailySimulationResult(
         List<GitCommit> commits,
-        GitPullRequest pullRequest,
-        JiraTask jiraTask,
+        List<GitPullRequest> pullRequests,
+        List<JiraTask> jiraTasks,
         List<JiraTaskComment> comments,
-        List<JiraTaskChangelog> changelogs,
-        DailyMetric dailyMetric
+        List<JiraTaskChangelog> changelogs
 ) {}

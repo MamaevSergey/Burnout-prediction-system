@@ -10,9 +10,8 @@ import java.util.List;
 import java.util.UUID;
 
 public interface JiraTaskCommentRepository extends JpaRepository<JiraTaskComment, Long> {
-
     @Query("SELECT COUNT(c) > 0 FROM JiraTaskComment c WHERE c.task.internalId = :taskId AND c.employee.id = :employeeId AND c.createdAt = :createdAt")
     boolean existsByTaskIdAndEmployeeIdAndCreatedAt(@Param("taskId") Long taskId, @Param("employeeId") UUID employeeId, @Param("createdAt") LocalDateTime createdAt);
 
-    List<JiraTaskComment> findAllByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
+    List<JiraTaskComment> findByEmployeeIdInAndCreatedAtBetween(List<UUID> employeeIds, LocalDateTime start, LocalDateTime end);
 }

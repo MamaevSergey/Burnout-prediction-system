@@ -15,6 +15,8 @@ public class MlModel {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    private String version;
+
     private LocalDateTime trainedAt;
     private Double w0Bias;
     private Double w1Ee;

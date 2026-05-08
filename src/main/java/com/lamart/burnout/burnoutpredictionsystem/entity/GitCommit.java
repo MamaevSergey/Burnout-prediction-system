@@ -23,5 +23,9 @@ public class GitCommit {
     private Employee employee;
 
     private LocalDateTime committedAt;
+
+    @Column(columnDefinition = "TEXT")
+    private String message;
+
     private Integer messageLength;
 }

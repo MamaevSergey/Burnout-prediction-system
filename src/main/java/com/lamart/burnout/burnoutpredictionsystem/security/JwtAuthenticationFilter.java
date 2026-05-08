@@ -29,8 +29,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String jwt = parseJwt(request);
             if (jwt != null && jwtUtils.validateJwtToken(jwt)) {
                 String username = jwtUtils.getUserNameFromJwtToken(jwt);
-
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+
+                System.out.println("DEBUG: User authenticated: " + username + ", Authorities: " + userDetails.getAuthorities());
+
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(
                                 userDetails,
@@ -45,6 +47,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        return path.startsWith("/css/") ||
+                path.startsWith("/js") ||
+                path.startsWith("/images/") ||
+                path.endsWith(".html") ||
+                path.equals("/");
     }
 
     private String parseJwt(HttpServletRequest request) {

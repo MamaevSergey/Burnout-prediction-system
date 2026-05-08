@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html class="light" lang="ru">
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <style>html.auth-pending body { visibility: hidden; }</style>
+    <script>document.documentElement.classList.add('auth-pending');</script>
+    <script src="js/auth.js"></script>
+    <script>window.BPSAuth.guardProtectedPage('login.html');</script>
+    <title>Сотрудники - LamartBPS</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet" />
+    <script id="tailwind-config" src="js/employees-tailwind-config.js"></script>
+    <link rel="icon" href="images/lamart.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="css/employees.css" />
+</head>
+
+<body class="bg-surface text-on-surface selection:bg-secondary-container selection:text-on-secondary-container">
+<header class="sticky top-0 w-full z-50 bg-[#fbf8ff]/70 dark:bg-[#171a2f]/70 backdrop-blur-3xl shadow-[0px_20px_40px_rgba(23,26,47,0.06)]">
+    <nav class="flex items-center justify-between px-4 md:px-10 h-16 md:h-20 max-w-[1920px] mx-auto">
+        <div class="flex items-center gap-4 md:gap-8">
+            <span class="text-lg md:text-xl font-black tracking-tighter text-[#171a2f] dark:text-[#fbf8ff]">LamartBPS</span>
+            <div class="hidden md:flex items-center gap-6 font-['Inter'] tracking-[-0.02em] font-medium">
+                <a class="text-[#404753] dark:text-[#c0c7d5] hover:text-[#097FE8] hover:bg-[#f4f2ff]/50 transition-all duration-300" href="dashboard.html">Панель управления</a>
+                <a class="text-[#097FE8] font-bold border-b-2 border-[#097FE8] pb-1" href="employees.html">Сотрудники</a>
+                <a class="text-[#404753] dark:text-[#c0c7d5] hover:text-[#097FE8] hover:bg-[#f4f2ff]/50 transition-all duration-300" href="model.html">Обучение модели</a>
+            </div>
+        </div>
+        <div class="flex items-center gap-2 md:gap-4">
+            <button class="hidden sm:block p-1 md:p-2 text-[#404753] active:scale-95 transition-transform ease-out">
+                <span class="hidden material-symbols-outlined text-xl md:text-2xl" data-icon="notifications">notifications</span>
+            </button>
+            <button id="settingsBtn" class="hidden sm:block p-1 md:p-2 text-[#404753] active:scale-95 transition-transform ease-out">
+                <span class="material-symbols-outlined text-xl md:text-2xl" data-icon="settings">settings</span>
+            </button>
+            <div class="relative">
+                <button id="user-avatar-btn" class="block h-8 w-8 md:h-10 md:w-10 rounded-full overflow-hidden bg-surface-container-highest border-2 border-primary-container/20 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all hover:scale-105 active:scale-95">
+                    <img alt="User Profile" class="h-full w-full object-cover" src="images/avatar.png" />
+                </button>
+                <div id="user-dropdown-menu" class="hidden absolute right-0 mt-2 w-48 bg-surface-container-lowest border border-outline-variant/20 rounded-xl shadow-[0px_10px_20px_rgba(23,26,47,0.1)] z-50 overflow-hidden">
+                    <button id="logout-btn" class="w-full text-left px-4 py-3 text-sm font-bold text-error hover:bg-error-container/20 transition-colors flex items-center gap-3">
+                        <span class="material-symbols-outlined text-error text-lg">logout</span>
+                        Выйти из системы
+                    </button>
+                </div>
+            </div>
+            <button id="mobile-menu-btn" class="md:hidden p-1 ml-1 text-[#404753] active:scale-95 transition-transform">
+                <span class="material-symbols-outlined text-2xl">menu</span>
+            </button>
+        </div>
+    </nav>
+    <div id="mobile-menu" class="hidden absolute top-16 left-0 w-full bg-[#fbf8ff] dark:bg-[#171a2f] shadow-xl border-t border-surface-container-high md:hidden">
+        <div class="flex flex-col px-6 py-4 gap-4 font-['Inter'] font-medium">
+            <a class="text-[#404753] dark:text-[#c0c7d5] hover:text-[#097FE8]" href="dashboard.html">Панель управления</a>
+            <a class="text-[#097FE8] font-bold" href="employees.html">Сотрудники</a>
+            <a class="text-[#404753] dark:text-[#c0c7d5] hover:text-[#097FE8]" href="model.html">Обучение модели</a>
+        </div>
+    </div>
+</header>
+<main class="ml-0 md:ml-12 pt-8 md:pt-12 pb-40 md:pb-32 px-4 md:px-12 min-h-screen">
+    <header class="mb-6">
+        <h1 class="text-3xl md:text-4xl font-black tracking-tight text-on-surface mb-2">Сотрудники</h1>
+        <p class="text-on-surface-variant text-base md:text-lg">Сопоставьте корпоративные электронные адреса с именами пользователей GitHub.</p>
+        <p class="text-error text-sm font-medium mt-3 hidden" id="employees-error"></p>
+    </header>
+    <div class="bg-surface-container-lowest rounded-lg shadow-[0px_20px_40px_rgba(23,26,47,0.06)] overflow-hidden">
+        <div
+                class="hidden md:grid grid-cols-12 gap-4 px-8 py-4 bg-surface-container-low text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
+            <div class="col-span-5">Корпоративная почта</div>
+            <div class="col-span-5">Гитхаб логин</div>
+            <div class="col-span-2 text-right">Действия</div>
+        </div>
+        <div class="divide-y divide-surface-container-high md:divide-y-0" id="mapping-list"></div>
+        <div class="px-4 md:px-8 py-4 bg-surface-container-low/30 flex items-center justify-between">
+            <span class="text-xs text-on-surface-variant" id="mapping-count">Показаны 0 из 0 сотрудников</span>
+            <div class="flex items-center gap-2">
+                <button id="prev-page-btn" class="p-1 rounded-md hover:bg-surface-container-high transition-colors disabled:opacity-50">
+                    <span class="material-symbols-outlined text-sm">chevron_left</span>
+                </button>
+                <span id="current-page-text" class="text-xs font-bold px-2">1</span>
+                <button id="next-page-btn" class="p-1 rounded-md hover:bg-surface-container-high transition-colors disabled:opacity-50">
+                    <span class="material-symbols-outlined text-sm">chevron_right</span>
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="mt-12 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div class="lg:col-span-8 p-6 md:p-8 rounded-lg bg-secondary/5 border border-secondary/10 flex flex-col sm:flex-row items-start gap-6">
+            <div class="p-4 rounded-xl bg-white shadow-sm shrink-0">
+                <span class="material-symbols-outlined text-secondary text-3xl">info</span>
+            </div>
+            <div>
+                <h3 class="text-lg font-bold text-on-surface mb-1">Информация о маппинге</h3>
+                <p class="text-sm text-on-surface-variant leading-relaxed">
+                    - Укажите Github Username для каждого сотрудника, чтобы система могла собирать данные о его активности.
+                    <br>- Кнопка "Деактивировать" позволяет пометить сотрудников, которые не работают в компании.
+                </p>
+            </div>
+        </div>
+        <div class="lg:col-span-4 p-6 md:p-8 rounded-lg bg-surface-container-low relative overflow-hidden group">
+            <div class="relative z-10">
+                <h3 class="text-lg font-bold text-on-surface mb-1">Загрузить целиком</h3>
+                <p class="text-xs text-on-surface-variant mb-6">Импорт сопоставления из .CSV</p>
+                <input type="file" id="csv-upload-input" accept=".csv" class="hidden" />
+
+                <button id="upload-csv-btn"
+                        class="bg-surface-container-lowest text-on-surface px-4 py-2 rounded-full text-xs font-bold shadow-sm transition-all hover:bg-white hover:scale-105 active:scale-95">
+                    Загрузить файл
+                </button>
+            </div>
+            <div
+                    class="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform duration-700">
+                <span class="material-symbols-outlined text-9xl">upload_file</span>
+            </div>
+        </div>
+    </div>
+</main>
+<footer class="fixed bottom-0 left-0 md:left-12 right-0 p-4 sm:p-6 z-40">
+    <div class="mx-auto max-w-screen-xl px-0 md:px-12">
+        <div
+                class="glass-panel rounded-[2rem] px-4 sm:px-8 py-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-[0px_20px_40px_rgba(23,26,47,0.1)] border border-white/20">
+            <div class="flex items-center gap-4">
+                <div id="unsaved-avatars-container" class="flex -space-x-2">
+                </div>
+                <span class="text-xs sm:text-sm font-medium text-on-surface" id="unsaved-count">Изменений нет</span>
+            </div>
+            <div class="flex items-center gap-3 w-full sm:w-auto">
+                <button
+                        id="reset-mappings-btn"
+                        class="w-full sm:w-auto px-6 py-2.5 rounded-full text-on-surface-variant font-bold text-sm hover:bg-surface-container-high transition-colors">
+                    Отмена
+                </button>
+                <button
+                        id="save-mappings-btn"
+                        class="w-full sm:w-auto px-8 py-2.5 rounded-full bg-gradient-to-r from-[#005cac] to-[#6050ac] text-white font-bold text-sm shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all">
+                    Сохранить изменения
+                </button>
+            </div>
+        </div>
+    </div>
+</footer>
+<script src="js/employees.js"></script>
+</body>
+</html>

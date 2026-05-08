@@ -10,7 +10,7 @@ import java.util.UUID;
 
 @Repository
 public interface DailyMetricRepository extends JpaRepository<DailyMetric, Long> {
-    List<DailyMetric> findAllByEmployeeIdAndDateAfter(UUID employeeId, LocalDate date);
-    List<DailyMetric> findAllByDate(LocalDate date);
+    List<DailyMetric> findAllByEmployeeIdAndDateBetween(UUID employeeId, LocalDate startDate, LocalDate endDate);
+    List<DailyMetric> findByDate(LocalDate date);
     List<DailyMetric> findAllByDateBetween(LocalDate startDate, LocalDate endDate);
 }

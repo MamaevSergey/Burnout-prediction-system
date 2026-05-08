@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -14,4 +15,14 @@ public interface BurnoutScoreRepository extends JpaRepository<BurnoutScore, Long
     @Query("SELECT b FROM BurnoutScore b WHERE b.calculatedAt = (SELECT MAX(b2.calculatedAt) FROM BurnoutScore b2 WHERE b2.employee = b.employee)")
     List<BurnoutScore> findLatestScores();
     Optional<BurnoutScore> findTopByEmployeeIdOrderByTargetDateDesc(UUID employeeId);
+
+    @Query("SELECT MAX(b.targetDate) FROM BurnoutScore b")
+    LocalDate findMaxTargetDate();
+
+    List<BurnoutScore> findByTargetDate(LocalDate targetDate);
+    Optional<BurnoutScore> findTopByEmployeeIdAndTargetDate(UUID employeeId, LocalDate targetDate);
+
+    Optional<BurnoutScore> findTopByEmployeeIdAndTargetDateBeforeOrderByTargetDateDesc(UUID employeeId, LocalDate targetDate);
+
+    boolean existsByTargetDate(LocalDate targetDate);
 }

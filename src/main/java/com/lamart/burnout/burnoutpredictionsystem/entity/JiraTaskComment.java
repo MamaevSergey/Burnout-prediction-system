@@ -23,4 +23,6 @@ public class JiraTaskComment {
 
     private LocalDateTime createdAt;
     private Integer bodyLength;
+
+    private Integer attachmentsCount;
 }

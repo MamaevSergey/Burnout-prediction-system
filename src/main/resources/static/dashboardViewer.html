@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <style>
+        html.auth-pending body {
+            visibility: hidden;
+        }
+    </style>
+    <script>document.documentElement.classList.add('auth-pending');</script>
+    <script src="js/auth.js"></script>
+    <script>window.BPSAuth.guardProtectedPage('login.html');</script>
+    <title>Панель управления - LamartBPS</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet" />
+    <script id="tailwind-config" src="js/dashboardViewer-tailwind-config.js"></script>
+    <link rel="icon" href="images/lamart.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="css/dashboardViewer.css" />
+</head>
+
+<body class="bg-background text-on-surface">
+<header
+        class="sticky top-0 w-full z-50 bg-[#fbf8ff]/70 dark:bg-[#171a2f]/70 backdrop-blur-3xl shadow-[0px_20px_40px_rgba(23,26,47,0.06)]">
+    <nav class="flex items-center justify-between px-10 h-20 max-w-[1920px] mx-auto">
+        <div class="flex items-center gap-8">
+            <span class="text-xl font-black tracking-tighter text-[#171a2f] dark:text-[#fbf8ff]">LamartBPS</span>
+            <div class="hidden md:flex items-center gap-6 font-['Inter'] tracking-[-0.02em] font-medium">
+                <a class="text-[#097FE8] font-bold border-b-2 border-[#097FE8] pb-1" href="dashboardViewer.html">Панель управления</a>
+            </div>
+        </div>
+        <div class="flex items-center gap-4">
+            <button class="hidden p-2 text-[#404753] active:scale-95 transition-transform ease-out">
+                <span class="hidden material-symbols-outlined" data-icon="notifications">notifications</span>
+            </button>
+            <button class="hidden p-2 text-[#404753] active:scale-95 transition-transform ease-out">
+                <span class="hidden material-symbols-outlined" data-icon="settings">settings</span>
+            </button>
+            <div class="relative">
+                <button id="user-avatar-btn" class="block h-8 w-8 md:h-10 md:w-10 rounded-full overflow-hidden bg-surface-container-highest border-2 border-primary-container/20 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all hover:scale-105 active:scale-95">
+                    <img alt="User Profile" class="h-full w-full object-cover" src="images/avatar.png" />
+                </button>
+                <div id="user-dropdown-menu" class="hidden absolute right-0 mt-2 w-48 bg-surface-container-lowest border border-outline-variant/20 rounded-xl shadow-[0px_10px_20px_rgba(23,26,47,0.1)] z-50 overflow-hidden">
+                    <button id="logout-btn" class="w-full text-left px-4 py-3 text-sm font-bold text-error hover:bg-error-container/20 transition-colors flex items-center gap-3">
+                        <span class="material-symbols-outlined text-error text-lg">logout</span>
+                        Выйти из системы
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+</header>
+<main class="max-w-[1920px] mx-auto px-10 py-12">
+    <div class="mb-12">
+        <h1 class="text-4xl font-extrabold tracking-tight text-on-surface mb-2">Burnout Prediction System</h1>
+        <p class="text-on-surface-variant font-medium">Внутренняя платформа мониторинга для проактивного управления благополучием сотрудников.</p>
+        <p class="text-error text-sm font-medium mt-3 hidden" id="dashboard-error"></p>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+        <div class="bg-surface-container-lowest p-8 rounded-lg shadow-[0px_20px_40px_rgba(23,26,47,0.06)] group hover:scale-[1.02] transition-all duration-300">
+                <span class="text-label-md font-bold uppercase tracking-widest text-on-surface-variant mb-4 block">Средний риск выгорания сегодня</span>
+            <div class="flex items-baseline gap-2">
+                <span class="text-5xl font-black text-primary" id="avg-risk-value"></span>
+                <span class="material-symbols-outlined text-lg" id="avg-risk-trend">trending_up</span>
+            </div>
+            <p id="avg-risk-yesterday" class="text-sm font-medium text-on-surface-variant mt-2"></p>
+            <div class="mt-4 h-1 w-full bg-surface-container-low rounded-full overflow-hidden">
+                <div class="h-full bg-primary w-[38%]" id="avg-risk-progress"></div>
+            </div>
+        </div>
+        <div
+                class="bg-surface-container-lowest p-8 rounded-lg shadow-[0px_20px_40px_rgba(23,26,47,0.06)] group hover:scale-[1.02] transition-all duration-300">
+                <span
+                        class="text-label-md font-bold uppercase tracking-widest text-on-surface-variant mb-4 block">Сотрудники в зоне риска</span>
+            <div class="flex items-baseline gap-2">
+                <span class="text-5xl font-black text-error" id="high-risk-count"></span>
+                <span class="text-on-surface-variant font-medium" id="high-risk-total"></span>
+            </div>
+            <div class="mt-4 flex gap-1">
+                <div class="h-2 w-2 rounded-full bg-error"></div>
+                <div class="h-2 w-2 rounded-full bg-error"></div>
+                <div class="h-2 w-2 rounded-full bg-error"></div>
+                <div class="h-2 w-2 rounded-full bg-error"></div>
+            </div>
+        </div>
+    </div>
+    <div class="flex flex-col gap-8 max-w-[1400px] mx-auto">
+        <div class="w-full bg-surface-container-lowest rounded-xl shadow-[0px_20px_40px_rgba(23,26,47,0.06)] overflow-hidden border border-outline-variant/10">
+            <div class="flex flex-col items-center justify-center py-24 px-8 text-center max-w-2xl mx-auto">
+                <div class="w-20 h-20 bg-surface-container-low rounded-full flex items-center justify-center mb-6">
+                        <span class="material-symbols-outlined text-4xl text-on-surface-variant opacity-40" data-icon="lock">lock</span>
+                </div>
+                <h2 class="text-2xl font-bold text-on-surface mb-3 tracking-tight">Доступ запрещен</h2>
+                <p class="text-on-surface-variant font-medium leading-relaxed mb-8">
+                    У вас недостаточно прав для просмотра подробных данных о сотрудниках. Если вы считаете, что это ошибка, пожалуйста, свяжитесь с системным администратором.
+                </p>
+                <div class="flex gap-4">
+                    <button class="px-6 py-2.5 bg-primary text-on-primary font-bold rounded-full text-sm transition-all hover:bg-primary-container active:scale-95">
+                        Запросить доступ
+                    </button>
+                    <button class="px-6 py-2.5 bg-surface-container-low text-on-surface font-bold rounded-full text-sm transition-all hover:bg-surface-container-high active:scale-95">
+                        Узнать больше
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="p-4 rounded-lg bg-primary-container text-on-primary-container flex items-center justify-center gap-3">
+            <span class="material-symbols-outlined text-sm" data-icon="info">info</span>
+            <p class="text-xs font-bold leading-tight">Вам доступна только базовая информация по компании.</p>
+        </div>
+    </div>
+</main>
+<footer class="max-w-[1920px] mx-auto px-10 py-8 border-t border-outline-variant/5">
+    <div class="flex justify-between items-center text-on-surface-variant text-xs font-medium">
+
+        <div class="flex gap-6">
+            <a class="hover:text-primary" href="https://github.com/MamaevSergey/Burnout-prediction-system">API Documentation</a>
+        </div>
+    </div>
+</footer>
+<script src="js/dashboardViewer.js"></script>
+</body>
+</html>

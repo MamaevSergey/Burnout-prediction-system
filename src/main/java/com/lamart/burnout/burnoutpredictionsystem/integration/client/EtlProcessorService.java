@@ -9,7 +9,6 @@ import com.lamart.burnout.burnoutpredictionsystem.util.Anonymizer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -39,9 +38,13 @@ public class EtlProcessorService {
         List<String> repositories = githubApiClient.fetchAllRepositories();
         int savedCount = 0;
 
-        for (String repoName : repositories) {
-            List<GithubCommitDto> rawCommits = githubApiClient.fetchCommitsForDate(repoName, targetDate);
+        Map<String, Employee> employeeCache = employeeRepository.findAll().stream()
+                .filter(e -> e.getGithubUsername() != null && !e.getGithubUsername().isEmpty())
+                .collect(Collectors.toMap(Employee::getGithubUsername, e -> e));
 
+        for (String repoName : repositories) {
+            try { Thread.sleep(600); } catch (InterruptedException exception) { Thread.currentThread().interrupt(); }
+            List<GithubCommitDto> rawCommits = githubApiClient.fetchCommitsForDate(repoName, targetDate);
             if (rawCommits.isEmpty()) continue;
 
             List<String> apiHashes = rawCommits.stream().map(GithubCommitDto::getSha).toList();
@@ -53,15 +56,25 @@ public class EtlProcessorService {
                 if (dto.getAuthor() == null || dto.getAuthor().getLogin() == null) continue;
 
                 String githubLogin = dto.getAuthor().getLogin();
-                Optional<Employee> employeeOpt = employeeRepository.findByGithubUsername(githubLogin);
 
-                if (employeeOpt.isPresent() && !existingHashes.contains(dto.getSha())) {
+                Employee employee = employeeCache.get(githubLogin);
+
+                if (employee != null && !existingHashes.contains(dto.getSha())) {
                     GitCommit commit = new GitCommit();
                     commit.setExternalHash(dto.getSha());
-                    commit.setEmployee(employeeOpt.get());
-                    commit.setCommittedAt(dto.getCommit().getCommitter().getDate());
-                    commit.setMessageLength(dto.getCommit().getMessage() != null ? dto.getCommit().getMessage().length() : 0);
+                    commit.setEmployee(employee);
 
+                    String message = dto.getCommit().getMessage();
+                    commit.setMessage(message);
+                    commit.setMessageLength(message != null ? message.length() : 0);
+
+                    if (dto.getCommit().getCommitter() != null && dto.getCommit().getCommitter().getDate() != null) {
+                        commit.setCommittedAt(dto.getCommit().getCommitter().getDate().toLocalDateTime());
+                    } else if (dto.getCommit().getAuthor() != null && dto.getCommit().getAuthor().getDate() != null) {
+                        commit.setCommittedAt(dto.getCommit().getAuthor().getDate().toLocalDateTime());
+                    } else {
+                        commit.setCommittedAt(targetDate.atStartOfDay());
+                    }
                     commitsToSave.add(commit);
                 }
             }
@@ -78,9 +91,13 @@ public class EtlProcessorService {
         List<String> repositories = githubApiClient.fetchAllRepositories();
         int savedCount = 0;
 
-        for (String repoName : repositories) {
-            List<GithubPullRequestDto> rawPR = githubApiClient.fetchRecentPullRequests(repoName, targetDate.atStartOfDay());
+        Map<String, Employee> employeeCache = employeeRepository.findAll().stream()
+                .filter(e -> e.getGithubUsername() != null && !e.getGithubUsername().isEmpty())
+                .collect(Collectors.toMap(Employee::getGithubUsername, e -> e));
 
+        for (String repoName : repositories) {
+            try { Thread.sleep(600); } catch (InterruptedException exception) { Thread.currentThread().interrupt(); }
+            List<GithubPullRequestDto> rawPR = githubApiClient.fetchRecentPullRequests(repoName, targetDate.atStartOfDay());
             if (rawPR.isEmpty()) continue;
 
             List<String> apiIds = rawPR.stream().map(pr -> String.valueOf(pr.getNumber())).toList();
@@ -92,21 +109,29 @@ public class EtlProcessorService {
             for (GithubPullRequestDto dto : rawPR) {
                 if (dto.getUser() == null || dto.getUser().getLogin() == null || dto.getMergedAt() == null) continue;
 
-                if (!dto.getMergedAt().toLocalDate().equals(targetDate)) continue;
+                boolean createdToday = dto.getCreatedAt() != null && dto.getCreatedAt().toLocalDate().equals(targetDate);
+                boolean mergedToday = dto.getMergedAt() != null && dto.getMergedAt().toLocalDate().equals(targetDate);
+
+                if (!createdToday && !mergedToday) continue;
 
                 String githubLogin = dto.getUser().getLogin();
-                Optional<Employee> employeeOpt = employeeRepository.findByGithubUsername(githubLogin);
+                Employee employee = employeeCache.get(githubLogin);
                 String externalId = String.valueOf(dto.getNumber());
 
-                if (employeeOpt.isPresent() && !existingIds.contains(externalId)) {
+                if (employee != null && !existingIds.contains(externalId)) {
                     GitPullRequest pr = new GitPullRequest();
                     pr.setExternalId(externalId);
-                    pr.setEmployee(employeeOpt.get());
-                    pr.setCreatedAt(dto.getCreatedAt());
-                    pr.setMergedAt(dto.getMergedAt());
+                    pr.setEmployee(employee);
 
-                    long leadTimeMins = ChronoUnit.MINUTES.between(dto.getCreatedAt(), dto.getMergedAt());
-                    pr.setLeadTimeMinutes((int) leadTimeMins);
+                    if (dto.getCreatedAt() != null) pr.setCreatedAt(dto.getCreatedAt().toLocalDateTime());
+                    if (dto.getMergedAt() != null) pr.setMergedAt(dto.getMergedAt().toLocalDateTime());
+
+                    if (dto.getCreatedAt() != null && dto.getMergedAt() != null) {
+                        long leadTimeMins = ChronoUnit.MINUTES.between(dto.getCreatedAt(), dto.getMergedAt());
+                        pr.setLeadTimeMinutes((int) leadTimeMins);
+                    } else {
+                        pr.setLeadTimeMinutes(0);
+                    }
 
                     prsToSave.add(pr);
                 }
@@ -128,37 +153,57 @@ public class EtlProcessorService {
             return;
         }
 
+        Map<UUID, Employee> employeeCache = employeeRepository.findAll().stream()
+                .collect(Collectors.toMap(Employee::getId, e -> e));
+        Set<Employee> employeesWithUpdatedTimezones = new HashSet<>();
+
         int savedCount = 0;
         for (JiraSearchResponseDto.JiraIssueDto issue : response.getIssues()) {
             try {
-                if (processSingleJiraIssue(issue)) {
+                if (processSingleJiraIssue(issue, employeeCache, employeesWithUpdatedTimezones)) {
                     savedCount++;
                 }
             } catch (Exception exception) {
                 log.error("Сбой при обработке задачи Jira {}: {}", issue.getKey(), exception.getMessage());
             }
         }
+
+        if (!employeesWithUpdatedTimezones.isEmpty()) {
+            employeeRepository.saveAll(employeesWithUpdatedTimezones);
+            log.info("Массово обновлены часовые пояса для {} сотрудников.", employeesWithUpdatedTimezones.size());
+        }
+
         log.info("Синхронизация Jira завершена. Сохранено/обновлено {} задач.", savedCount);
     }
 
-    private boolean processSingleJiraIssue(JiraSearchResponseDto.JiraIssueDto issue) {
+    private boolean processSingleJiraIssue(JiraSearchResponseDto.JiraIssueDto issue,
+                                           Map<UUID, Employee> employeeCache,
+                                           Set<Employee> updatedEmployees) {
         if (issue.getFields() == null || issue.getFields().getAssignee() == null) return false;
 
         String email = issue.getFields().getAssignee().getEmailAddress();
         if (email == null || email.isEmpty()) return false;
 
         UUID employeeId = anonymizer.hashToUuid(email);
-        Optional<Employee> employeeOpt = employeeRepository.findById(employeeId);
+        Employee employee = employeeCache.get(employeeId);
 
-        if (employeeOpt.isEmpty()) {
+        if (employee == null) {
             log.debug("Пропущена задача {} от неизвестного email: {}", issue.getKey(), email);
             return false;
         }
 
-        JiraTask task = saveOrUpdateTask(issue, employeeOpt.get());
+        String jiraTimezone = issue.getFields().getAssignee().getTimeZone();
+
+        if (jiraTimezone != null && !jiraTimezone.equals(employee.getTimezone())) {
+            employee.setTimezone(jiraTimezone);
+            updatedEmployees.add(employee);
+            log.info("Обновлен часовой пояс для сотрудника: {}: {}", employee.getId(), jiraTimezone);
+        }
+
+        JiraTask task = saveOrUpdateTask(issue, employee);
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
 
-        processCommentsAndAttachments(issue, task, formatter);
+        processCommentsAndAttachments(issue, task, formatter, employeeCache);
         processChangelog(issue, task, formatter);
 
         return true;
@@ -194,7 +239,8 @@ public class EtlProcessorService {
         return jiraTaskRepository.save(task);
     }
 
-    private void processCommentsAndAttachments(JiraSearchResponseDto.JiraIssueDto issue, JiraTask task, DateTimeFormatter formatter) {
+    private void processCommentsAndAttachments(JiraSearchResponseDto.JiraIssueDto issue, JiraTask task,
+                                               DateTimeFormatter formatter, Map<UUID, Employee> employeeCache) {
         // Комментарии
         if (issue.getFields().getComment() != null && issue.getFields().getComment().getComments() != null) {
             for (JiraSearchResponseDto.CommentDto commentDto : issue.getFields().getComment().getComments()) {
@@ -204,15 +250,16 @@ public class EtlProcessorService {
                     LocalDateTime commDate = ZonedDateTime.parse(commentDto.getCreated(), formatter).toLocalDateTime();
                     UUID authorId = anonymizer.hashToUuid(commentDto.getAuthor().getEmailAddress());
 
-                    if (!jiraTaskCommentRepository.existsByTaskIdAndEmployeeIdAndCreatedAt(task.getInternalId(), authorId, commDate)) {
-                        employeeRepository.findById(authorId).ifPresent(author -> {
-                            JiraTaskComment comment = new JiraTaskComment();
-                            comment.setTask(task);
-                            comment.setEmployee(author);
-                            comment.setBodyLength(commentDto.getBody() != null ? commentDto.getBody().length() : 0);
-                            comment.setCreatedAt(commDate);
-                            jiraTaskCommentRepository.save(comment);
-                        });
+                    Employee author = employeeCache.get(authorId);
+
+                    if (author != null && !jiraTaskCommentRepository.existsByTaskIdAndEmployeeIdAndCreatedAt(task.getInternalId(), authorId, commDate)) {
+                        JiraTaskComment comment = new JiraTaskComment();
+                        comment.setTask(task);
+                        comment.setEmployee(author);
+                        comment.setBodyLength(commentDto.getBody() != null ? commentDto.getBody().length() : 0);
+                        comment.setAttachmentsCount(0);
+                        comment.setCreatedAt(commDate);
+                        jiraTaskCommentRepository.save(comment);
                     }
                 } catch (Exception e) {
                     log.warn("Ошибка парсинга даты комментария: {}", commentDto.getCreated());
@@ -229,15 +276,16 @@ public class EtlProcessorService {
                     LocalDateTime attachDate = ZonedDateTime.parse(attachDto.getCreated(), formatter).toLocalDateTime();
                     UUID authorId = anonymizer.hashToUuid(attachDto.getAuthor().getEmailAddress());
 
-                    if (!jiraTaskCommentRepository.existsByTaskIdAndEmployeeIdAndCreatedAt(task.getInternalId(), authorId, attachDate)) {
-                        employeeRepository.findById(authorId).ifPresent(author -> {
-                            JiraTaskComment mockComment = new JiraTaskComment();
-                            mockComment.setTask(task);
-                            mockComment.setEmployee(author);
-                            mockComment.setBodyLength(0);
-                            mockComment.setCreatedAt(attachDate);
-                            jiraTaskCommentRepository.save(mockComment);
-                        });
+                    Employee author = employeeCache.get(authorId);
+
+                    if (author != null && !jiraTaskCommentRepository.existsByTaskIdAndEmployeeIdAndCreatedAt(task.getInternalId(), authorId, attachDate)) {
+                        JiraTaskComment mockComment = new JiraTaskComment();
+                        mockComment.setTask(task);
+                        mockComment.setEmployee(author);
+                        mockComment.setBodyLength(0);
+                        mockComment.setAttachmentsCount(1);
+                        mockComment.setCreatedAt(attachDate);
+                        jiraTaskCommentRepository.save(mockComment);
                     }
                 } catch (Exception e) {
                     log.warn("Ошибка парсинга даты вложения: {}", attachDto.getCreated());

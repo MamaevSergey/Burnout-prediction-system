@@ -10,6 +10,6 @@ import java.util.UUID;
 
 @Repository
 public interface GitCommitRepository extends JpaRepository<GitCommit, Long> {
-    List<GitCommit> findAllByCommittedAtBetween(LocalDateTime start, LocalDateTime end);
     List<GitCommit> findAllByExternalHashIn(List<String> hashes);
+    List<GitCommit> findByEmployeeIdInAndCommittedAtBetween(List<UUID> employeeIds, LocalDateTime start, LocalDateTime end);
 }

@@ -10,7 +10,7 @@ public class MathUtilsTest {
 
     @Test
     void testCalculateMean() {
-        List<Integer> values = Arrays.asList(2, 4, 4, 4, 5, 5, 7, 9);
+        List<Double> values = Arrays.asList(2.0, 4.0, 4.0, 4.0, 5.0, 5.0, 7.0, 9.0);
         double mean = MathUtils.calculateMean(values);
         assertEquals(5.0, mean, 0.001, "Среднее значение должно быть 5.0");
     }
@@ -23,7 +23,7 @@ public class MathUtilsTest {
 
     @Test
     void testCalculateStandardDeviation() {
-        List<Integer> values = Arrays.asList(2, 4, 4, 4, 5, 5, 7 ,9);
+        List<Double> values = Arrays.asList(2.0, 4.0, 4.0, 4.0, 5.0, 5.0, 7.0 ,9.0);
         double mean = 5.0;
         double stdDev = MathUtils.calculateStandardDeviation(values, mean);
         assertEquals(2.138, stdDev, 0.001, "Стандартное отклонение должно быть ~2.138");
@@ -31,7 +31,7 @@ public class MathUtilsTest {
 
     @Test
     void testCalculateStandardDeviationEdgeCases() {
-        List<Integer> singleValue = Collections.singletonList(5);
+        List<Double> singleValue = Collections.singletonList(5.0);
         assertEquals(0.0, MathUtils.calculateStandardDeviation(singleValue, 5.0), "Для одного элемента отклонение 0.0");
         assertEquals(0.0, MathUtils.calculateStandardDeviation(null, 5.0), "Для null списка отклонение 0.0");
     }

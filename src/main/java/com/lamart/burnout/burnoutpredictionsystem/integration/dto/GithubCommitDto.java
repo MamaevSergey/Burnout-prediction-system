@@ -2,32 +2,34 @@ package com.lamart.burnout.burnoutpredictionsystem.integration.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
-
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class GithubCommitDto {
     private String sha;
     private CommitInfo commit;
-    private AuthorInfo author;
+    private UserInfo author;
 
     @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class CommitInfo {
         private String message;
-        private CommitterInfo committer;
+        private GitUser committer;
+        private GitUser author;
     }
 
     @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class CommitterInfo {
-        private LocalDateTime date;
+    public static class GitUser {
+        private String name;
+        private String email;
+        private ZonedDateTime date;
     }
 
     @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class AuthorInfo {
+    public static class UserInfo {
         private String login;
     }
 }

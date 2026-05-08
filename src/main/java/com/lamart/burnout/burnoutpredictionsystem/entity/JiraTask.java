@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 public class JiraTask {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long internalId; // Системный Primary Key
+    private Long internalId;
 
     @Column(name = "external_id", unique = true)
     private String externalId;

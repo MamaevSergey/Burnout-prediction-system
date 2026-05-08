@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html class="light" lang="ru">
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <style>html.auth-pending body {visibility: hidden;}</style>
+    <script>document.documentElement.classList.add('auth-pending');</script>
+    <script src="js/auth.js"></script>
+    <script>window.BPSAuth.guardLoginPage('dashboard.html');</script>
+    <title>Система прогнозирования выгорания - LamartBPS | Безопасный вход</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="css/login.css" />
+    <link rel="icon" href="images/lamart.svg" type="image/svg+xml">
+    <script id="tailwind-config" src="js/login-tailwind-config.js"></script>
+</head>
+
+<body class="bg-surface text-on-surface min-h-screen flex flex-col selection:bg-secondary-container selection:text-on-secondary-container">
+    <div class="fixed inset-0 bg-mesh -z-10"></div>
+    <div class="fixed inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.03] -z-10"></div>
+    <main class="flex-grow flex items-center justify-center px-6 py-12">
+        <div class="w-full max-w-[480px]">
+            <div class="flex flex-col items-center mb-10">
+                <div class="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-xl mb-4">
+                    <span class="material-symbols-outlined text-white text-3xl" style="font-variation-settings: 'FILL' 1;">insights</span>
+                </div>
+                <h1 class="text-2xl font-extrabold tracking-tighter text-on-surface">Burnout Predication System</h1>
+                <p class="text-on-surface-variant font-medium text-sm mt-1">Система прогнозирования выгорания</p>
+            </div>
+            <div class="glass-card rounded-xl p-10 shadow-[0px_20px_40px_rgba(23,26,47,0.06)] border border-white/40">
+                <form class="space-y-6" id="login-form">
+                    <div class="space-y-2">
+                        <label class="block text-[0.75rem] font-bold uppercase tracking-widest text-on-surface-variant ml-1" for="email">
+                            Логин пользователя
+                        </label>
+                        <div class="relative group">
+                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                <span class="material-symbols-outlined text-outline text-xl group-focus-within:text-primary transition-colors">alternate_email</span>
+                            </div>
+                            <input class="block w-full pl-12 pr-4 py-4 bg-surface-container-low border-none rounded-full text-on-surface placeholder:text-outline/60 focus:ring-2 focus:ring-primary/20 focus:bg-surface-container-lowest transition-all duration-300 shadow-inner" id="email" name="email" placeholder="ivan.ivanov" required="" type="text" />
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center px-1">
+                            <label class="block text-[0.75rem] font-bold uppercase tracking-widest text-on-surface-variant" for="password">
+                                Пароль
+                            </label>
+                            <a class="text-[0.75rem] font-bold text-primary hover:text-secondary transition-colors" href="#">Забыли пароль?</a>
+                        </div>
+                        <div class="relative group">
+                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                <span class="material-symbols-outlined text-outline text-xl group-focus-within:text-primary transition-colors">lock</span>
+                            </div>
+                            <input class="block w-full pl-12 pr-4 py-4 bg-surface-container-low border-none rounded-full text-on-surface placeholder:text-outline/60 focus:ring-2 focus:ring-primary/20 focus:bg-surface-container-lowest transition-all duration-300 shadow-inner" id="password" name="password" placeholder="••••••••••••" required="" type="password" />
+                            <div class="absolute inset-y-0 right-0 pr-4 flex items-center">
+                                <button id="toggle-password" class="text-outline hover:text-on-surface transition-colors" type="button">
+                                    <span class="material-symbols-outlined text-xl">visibility</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="pt-4">
+                        <button id="login-submit" class="w-full py-4 px-6 bg-gradient-to-r from-primary to-secondary text-white font-bold rounded-full shadow-lg shadow-primary/20 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 flex items-center justify-center gap-2" type="submit">
+                            <span>Войти</span>
+                            <span class="material-symbols-outlined text-xl">arrow_forward</span>
+                        </button>
+                    </div>
+                    <p class="text-error text-sm font-medium hidden" id="login-error"></p>
+                </form>
+                <div class="relative my-8">
+                    <div class="absolute inset-0 flex items-center">
+                        <div class="w-full border-t border-outline-variant/30"></div>
+                    </div>
+                    <div class="relative flex justify-center text-[0.75rem]">
+                        <span class="px-4 bg-white/0 text-on-surface-variant font-medium">Доступ к внутренней системе</span>
+                    </div>
+                </div>
+                <div class="text-center">
+                    <p class="text-on-surface-variant text-sm font-medium">
+                        Новый сотрудник?
+                        <a class="text-secondary font-bold hover:underline underline-offset-4 ml-1" href="dashboard.html">Запросить
+                            доступ</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </main>
+    <footer
+        class="flex items-center px-12 py-8 w-full bg-surface-container-low dark:bg-surface-container-high transition-colors duration-300">
+        <div class="text-xl font-black text-[#171a2f] dark:text-[#fbf8ff]">
+            LamartBPS
+        </div>
+    </footer>
+    <script src="js/login.js"></script>
+</body>
+</html>

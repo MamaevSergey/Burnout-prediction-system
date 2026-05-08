@@ -4,8 +4,8 @@ services:
     container_name: burnout_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: dev
-      POSTGRES_PASSWORD: password
+      POSTGRES_USER: (имя)
+      POSTGRES_PASSWORD: (пароль от бд)
       POSTGRES_DB: burnout_system
     ports:
       - "5435:5432"
@@ -22,12 +22,18 @@ services:
       - db
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/burnout_system
-      - SPRING_DATASOURCE_USERNAME=dev
-      - SPRING_DATASOURCE_PASSWORD=password
-      - JIRA_USERNAME=${JIRA_USERNAME:-1hirokoae@gmail.com}
-      - JIRA_TOKEN=${JIRA_TOKEN:-ATATT3xFfGF059v2SiGgSyFzdwI9rit3zaNU7c6Eub45y_9DLOlb0huX-TtGP_Jabsn1XriF8GU76q9CmjPD87a6AXKAhNMWUbJXJjLZi_yGSZNKanArWEFpvwIhKKuQv337JGDnxZEZilmBI0sniv3RCl_y0dXVRBcYpNu6Cz2F-rj11jcqe2M=D086472F}
-      - GITHUB_TOKEN=${GITHUB_TOKEN:-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}
-      - APP_MOCK_DATA_ENABLED=false
+      - SPRING_DATASOURCE_USERNAME=(имя)
+      - SPRING_DATASOURCE_PASSWORD=(пароль от бд)
+      - ADMIN_LOGIN=придумать логин
+      - ADMIN_PASSWORD=придумать пароль
+      - HR_LOGIN=придумать логин
+      - HR_PASSWORD=придумать пароль
+      - VIEWER_LOGIN=придумать логин
+      - VIEWER_PASSWORD=придумать пароль
+      - JWT_SECRET=сгенерировать jwt secret
+      - MASTER_KEY=сделать мастер ключ
+      - HASH_SALT=указать соль
+      - PROFILE=prod
 
 volumes:
   postgres_data:
