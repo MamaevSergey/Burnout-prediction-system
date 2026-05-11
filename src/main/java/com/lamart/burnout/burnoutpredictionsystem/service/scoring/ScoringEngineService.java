@@ -25,6 +25,7 @@ public class ScoringEngineService {
     private final BurnoutScoreRepository burnoutScoreRepository;
     private final MlModelRepository mlModelRepository;
     private final SystemSettingsRepository settingsRepository;
+    private static final int MIN_HISTORY_DAYS = 30;
 
     @Transactional
     public void calculateScores(LocalDate targetDate) {
@@ -44,12 +45,12 @@ public class ScoringEngineService {
         Employee employee = employeeRepository.findById(employeeId)
                 .orElseThrow(() -> new IllegalArgumentException("Сотрудник не найден"));
 
-        LocalDate startDate = targetDate.minusDays(30);
+        LocalDate startDate = targetDate.minusDays(45);
 
         List<DailyMetric> actualHistory = dailyMetricRepository.findAllByEmployeeIdAndDateBetween(
                 employee.getId(), startDate, targetDate);
 
-        if (actualHistory.size() < 5) return;
+        if (actualHistory.size() < MIN_HISTORY_DAYS) return;
 
         LocalDate firstActivityDate = actualHistory.stream()
                 .map(DailyMetric::getDate)
@@ -169,7 +170,7 @@ public class ScoringEngineService {
         double yellowThreshold = settings.getYellowThreshold();
 
         List<Employee> employees = employeeRepository.findAll();
-        LocalDate startDate = targetDate.minusDays(30);
+        LocalDate startDate = targetDate.minusDays(45);
 
         List<DailyMetric> allMetrics = dailyMetricRepository.findAllByDateBetween(startDate, targetDate);
         Map<UUID, List<DailyMetric>> metricsByEmp = allMetrics.stream()
@@ -182,7 +183,7 @@ public class ScoringEngineService {
             List<DailyMetric> actualHistory = metricsByEmp.getOrDefault(emp.getId(), new ArrayList<>());
             actualHistory.sort(Comparator.comparing(DailyMetric::getDate));
 
-            if (actualHistory.size() < 5) {
+            if (actualHistory.size() < MIN_HISTORY_DAYS) {
                 log.info("Недостаточно данных для оценки сотрудника {} (всего {} дней). Пропускаем ML-скоринг.", emp.getId(), actualHistory.size());
                 continue;
             }
@@ -224,16 +225,16 @@ public class ScoringEngineService {
 
             double hoursWorkedToday = todayMetric.getActivitySpanSeconds() / 3600.0;
             if (hoursWorkedToday > 12.0) {
-                log.info("Для сотрудника: {} был начислен штраф 1.0 за > 12 часов работы. За дату {}", emp.getId(), todayMetric.getDate());
+                // log.info("Для сотрудника: {} был начислен штраф 1.0 за > 12 часов работы. За дату {}", emp.getId(), todayMetric.getDate());
                 rawEeIndex += 1.0;
             } else if (hoursWorkedToday > 10.0) {
-                log.info("Для сотрудника: {} был начислен штраф 0.5 за > 10 часов работы. За дату {}", emp.getId(), todayMetric.getDate());
+                // log.info("Для сотрудника: {} был начислен штраф 0.5 за > 10 часов работы. За дату {}", emp.getId(), todayMetric.getDate());
                 rawEeIndex += 0.5;
             }
 
             if (todayMetric.getNightEventsCount() > 0 && hoursWorkedToday > 9.0) {
                 rawEeIndex += 0.5;
-                log.info("Для сотрудника: {} был начислен штраф 0.5 за ночную работу. За дату {}", emp.getId(), todayMetric.getDate());
+                // log.info("Для сотрудника: {} был начислен штраф 0.5 за ночную работу. За дату {}", emp.getId(), todayMetric.getDate());
             }
 
             long weekendDaysWorked = paddedHistory.stream()
@@ -241,10 +242,10 @@ public class ScoringEngineService {
                     .count();
 
             if (weekendDaysWorked > 6) {
-                log.info("Для сотрудника: {} был начислен штраф 0.5 за > 4 дней в выходные. За дату {}", emp.getId(), todayMetric.getDate());
+                // log.info("Для сотрудника: {} был начислен штраф 0.5 за > 4 дней в выходные. За дату {}", emp.getId(), todayMetric.getDate());
                 rawEeIndex += 0.5;
             } else if (weekendDaysWorked > 3) {
-                log.info("Для сотрудника: {} был начислен штраф 0.5 за > 2 дней в выходные. За дату {}", emp.getId(), todayMetric.getDate());
+                // log.info("Для сотрудника: {} был начислен штраф 0.5 за > 2 дней в выходные. За дату {}", emp.getId(), todayMetric.getDate());
                 rawEeIndex += 0.25;
             }
 

@@ -136,7 +136,12 @@ document.addEventListener('DOMContentLoaded', function () {
         currentEmployeeData = data;
         const pct = toPercent(data.riskProbability);
 
-        if (ui.title) ui.title.textContent = '#' + String(data.employeeId || '').toUpperCase();
+        if (ui.title) {
+            const rawId = String(data.employeeId || '');
+            const shortId = rawId.substring(0, 4).toUpperCase();
+            ui.title.textContent = "Сотрудник-" + shortId;
+        }
+
         if (ui.riskPercent) ui.riskPercent.textContent = pct + '%';
 
         if (ui.riskLabel) ui.riskLabel.textContent = getRiskText(pct, data.statusColor);

@@ -5,7 +5,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: (имя)
-      POSTGRES_PASSWORD: (пароль от бд)
+      POSTGRES_PASSWORD: (пароль)
       POSTGRES_DB: burnout_system
     ports:
       - "5435:5432"
@@ -23,7 +23,7 @@ services:
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/burnout_system
       - SPRING_DATASOURCE_USERNAME=(имя)
-      - SPRING_DATASOURCE_PASSWORD=(пароль от бд)
+      - SPRING_DATASOURCE_PASSWORD=(пароль)
       - ADMIN_LOGIN=придумать логин
       - ADMIN_PASSWORD=придумать пароль
       - HR_LOGIN=придумать логин

@@ -65,8 +65,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const trendIcon = document.getElementById('avg-risk-trend');
 
         const avgRiskYesterdayNode = document.getElementById('avg-risk-yesterday');
-        if (avgRiskYesterdayNode && stats.averageRiskPercentYesterday !== undefined) {
-            avgRiskYesterdayNode.textContent = 'Вчера было: ' + stats.averageRiskPercentYesterday + '%';
+        if (avgRiskYesterdayNode && rawStats.averageRiskPercentYesterday !== undefined) {
+            avgRiskYesterdayNode.textContent = 'Вчера было: ' + rawStats.averageRiskPercentYesterday + '%';
         }
 
         if (trendIcon) {

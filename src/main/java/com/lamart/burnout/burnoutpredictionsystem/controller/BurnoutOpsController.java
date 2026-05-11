@@ -6,7 +6,6 @@ import com.lamart.burnout.burnoutpredictionsystem.entity.Employee;
 import com.lamart.burnout.burnoutpredictionsystem.entity.MlModel;
 import com.lamart.burnout.burnoutpredictionsystem.integration.client.EtlProcessorService;
 import com.lamart.burnout.burnoutpredictionsystem.integration.client.JiraApiClient;
-import com.lamart.burnout.burnoutpredictionsystem.integration.dto.HrSurveyUploadDto;
 import com.lamart.burnout.burnoutpredictionsystem.integration.dto.JiraUserDto;
 import com.lamart.burnout.burnoutpredictionsystem.integration.dto.JiraUserMappingDto;
 import com.lamart.burnout.burnoutpredictionsystem.integration.dto.MappingRequestDto;
@@ -21,7 +20,6 @@ import com.lamart.burnout.burnoutpredictionsystem.util.Anonymizer;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -87,15 +85,6 @@ public class BurnoutOpsController {
         scoringEngineService.calculateScores(targetDate);
 
         return ResponseEntity.ok("Ручной пайплайн за " + targetDate + "успешно запущен!");
-    }
-
-    @PostMapping("/train")
-    public ResponseEntity<String> trainModel(@Valid @RequestBody HrSurveyUploadDto surveyDto) {
-        modelTrainingService.prepareDatasetAndTrain(surveyDto);
-
-        recalculateHistoryAfterTraining();
-
-        return ResponseEntity.ok("Модель успешно переобучена и активирована");
     }
 
     @PostMapping("/backfill")

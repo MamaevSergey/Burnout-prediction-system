@@ -1,10 +1,13 @@
 package com.lamart.burnout.burnoutpredictionsystem.service.scoring;
 
+import com.lamart.burnout.burnoutpredictionsystem.entity.BurnoutScore;
 import com.lamart.burnout.burnoutpredictionsystem.entity.MlModel;
-import com.lamart.burnout.burnoutpredictionsystem.integration.dto.HrSurveyUploadDto;
+import com.lamart.burnout.burnoutpredictionsystem.entity.SystemSettings;
 import com.lamart.burnout.burnoutpredictionsystem.repository.BurnoutScoreRepository;
+import com.lamart.burnout.burnoutpredictionsystem.repository.EmployeeRepository;
 import com.lamart.burnout.burnoutpredictionsystem.repository.MlModelRepository;
-import com.lamart.burnout.burnoutpredictionsystem.util.Anonymizer;
+import com.lamart.burnout.burnoutpredictionsystem.repository.SystemSettingsRepository;
+import com.lamart.burnout.burnoutpredictionsystem.util.MathUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -15,9 +18,7 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 @Slf4j
 @Service
@@ -25,7 +26,8 @@ import java.util.UUID;
 public class ModelTrainingService {
     private final MlModelRepository mlModelRepository;
     private final BurnoutScoreRepository burnoutScoreRepository;
-    private final Anonymizer anonymizer;
+    private final SystemSettingsRepository settingsRepository;
+    private final EmployeeRepository employeeRepository;
 
     public static class TrainingRecord {
         public double ee;
@@ -47,41 +49,90 @@ public class ModelTrainingService {
 
         int count1 = (int) dataset.stream().filter(r -> r.actualBurnout == 1).count();
         int count0 = dataset.size() - count1;
-
         MlModel currentActive = mlModelRepository.findByIsActiveTrue().orElse(null);
+
         if (count0 == 0 || count1 == 0) {
             log.warn("В датасете представлен только один класс. Полноценное обучение невозможно.");
-            deactivateCurrentModel();
-            MlModel newModel = currentActive != null ? cloneModel(currentActive) : new MlModel();
-
-            if (currentActive == null) {
-                newModel.setW0Bias(-0.8);
-                newModel.setW1Ee(1.2);
-                newModel.setW2Dp(1.0);
-                newModel.setW3Rpa(1.0);
-            }
-
-            if (count1 == 0) newModel.setW0Bias(newModel.getW0Bias() - 0.2);
-            else newModel.setW0Bias(newModel.getW0Bias() + 0.2);
-
-            return mlModelRepository.save(newModel);
+            return handleSingleClassScenario(currentActive, count1);
         }
 
+        // Базовые веса (для регуляризации)
+        double baseW0 = -0.8, baseW1 = 1.2, baseW2 = 1.0, baseW3 = 1.0;
+
+        // Кросс-валидация
+        evaluateWithLOOCV(dataset, count0, count1, baseW0, baseW1, baseW2, baseW3);
+
+        double[] finalWeights = runGradientDescent(dataset, count0, count1, baseW0, baseW1, baseW2, baseW3);
+
+        log.info("Финальное обучение завершено. Веса: w0={}, w1={}, w2={}, w3={}",
+                String.format("%.4f", finalWeights[0]), String.format("%.4f", finalWeights[1]),
+                String.format("%.4f", finalWeights[2]), String.format("%.4f", finalWeights[3]));
+
+        checkModelDrift(currentActive, finalWeights[0], finalWeights[1], finalWeights[2], finalWeights[3]);
+        deactivateCurrentModel();
+
+        MlModel newModel = new MlModel();
+        newModel.setW0Bias(finalWeights[0]);
+        newModel.setW1Ee(finalWeights[1]);
+        newModel.setW2Dp(finalWeights[2]);
+        newModel.setW3Rpa(finalWeights[3]);
+        newModel.setTrainedAt(LocalDateTime.now());
+        newModel.setVersion("v1.0-" + LocalDate.now());
+        newModel.setActive(true);
+
+        return mlModelRepository.save(newModel);
+    }
+
+    private MlModel cloneModel(MlModel source) {
+        MlModel clone = new MlModel();
+        clone.setW0Bias(source.getW0Bias());
+        clone.setW1Ee(source.getW1Ee());
+        clone.setW2Dp(source.getW2Dp());
+        clone.setW3Rpa(source.getW3Rpa());
+        clone.setTrainedAt(LocalDateTime.now());
+        clone.setVersion("v1.0-c-" + LocalDate.now());
+        clone.setActive(true);
+        return clone;
+    }
+
+    private void evaluateWithLOOCV(List<TrainingRecord> dataset, int count0, int count1, double baseW0, double baseW1, double baseW2, double baseW3) {
+        int tp = 0, tn = 0, fp = 0, fn = 0;
+        SystemSettings settings = settingsRepository.findById(1L).orElseThrow();
+        double threshold = settings.getYellowThreshold();
+
+        for (int i = 0; i < dataset.size(); i++) {
+            List<TrainingRecord> trainSet = new ArrayList<>(dataset);
+            TrainingRecord testPoint = trainSet.remove(i);
+
+            int currentCount1 = (int) trainSet.stream().filter(r -> r.actualBurnout == 1).count();
+            int currentCount0 = trainSet.size() - currentCount1;
+            if (currentCount1 == 0 || currentCount0 == 0) continue;
+
+            double[] weights = runGradientDescent(trainSet, currentCount0, currentCount1, baseW0, baseW1, baseW2, baseW3);
+
+            double z = weights[0] + (weights[1] * testPoint.ee) + (weights[2] * testPoint.dp) + (weights[3] * testPoint.rpa);
+            double prediction = MathUtils.sigmoid(z);
+            int predictedClass = prediction >= threshold ? 1 : 0;
+
+            if (predictedClass == 1 && testPoint.actualBurnout == 1) tp++;
+            else if (predictedClass == 0 && testPoint.actualBurnout == 0) tn++;
+            else if (predictedClass == 1 && testPoint.actualBurnout == 0) fp++;
+            else fn++;
+        }
+
+        int evaluatedTotal = tp + tn + fp + fn;
+        double accuracy = evaluatedTotal == 0 ? 0 : (double) (tp + tn) / evaluatedTotal;
+        log.info("Кросс-валидация LOOCV:");
+        log.info("Accuracy:  {}%", String.format("%.2f", accuracy * 100));
+        log.info("TP={}, TN={}, FP={}, FN={}", tp, tn, fp, fn);
+        log.info("===============================================");
+    }
+
+    private double[] runGradientDescent(List<TrainingRecord> dataset, int count0, int count1, double baseW0, double baseW1, double baseW2, double baseW3) {
         double learningRate = 0.05;
         int maxEpochs = 5000;
-
-        double baseW0 = -0.8;
-        double baseW1 = 1.2;
-        double baseW2 = 1.0;
-        double baseW3 = 1.0;
-
-        double w0 = baseW0;
-        double w1 = baseW1;
-        double w2 = baseW2;
-        double w3 = baseW3;
-
+        double w0 = baseW0, w1 = baseW1, w2 = baseW2, w3 = baseW3;
         double lambda = Math.max(2.0, 50.0 / dataset.size());
-
         double weight0 = (double) dataset.size() / (2.0 * count0);
         double weight1 = (double) dataset.size() / (2.0 * count1);
         int n = dataset.size();
@@ -96,8 +147,7 @@ public class ModelTrainingService {
 
             for (TrainingRecord record : dataset) {
                 double z = w0 + (w1 * record.ee) + (w2 * record.dp) + (w3 * record.rpa);
-                double prediction = com.lamart.burnout.burnoutpredictionsystem.util.MathUtils.sigmoid(z);
-
+                double prediction = MathUtils.sigmoid(z);
                 double error = prediction - record.actualBurnout;
                 double classWeight = record.actualBurnout == 1 ? weight1 : weight0;
 
@@ -110,7 +160,6 @@ public class ModelTrainingService {
                 currentLoss += -classWeight * (record.actualBurnout * Math.log(p) + (1 - record.actualBurnout) * Math.log(1 - p));
             }
 
-            // Байесовская регуляризация (тянем веса к экспертным, а не к нулю)
             dw0 += lambda * (w0 - baseW0);
             dw1 += lambda * (w1 - baseW1);
             dw2 += lambda * (w2 - baseW2);
@@ -130,90 +179,23 @@ public class ModelTrainingService {
                 epochsWithoutImprovement++;
             }
 
-            if (epochsWithoutImprovement >= patience) {
-                if (epoch % 500 == 0 || epoch < 10) {
-                    log.info("Сработала ранняя остановка на эпохе {}. Ошибка стабилизировалась.", epoch);
-                }
-                break;
-            }
+            if (epochsWithoutImprovement >= patience) break;
         }
+        return new double[]{w0, w1, w2, w3};
+    }
 
-        evaluateModel(dataset, w0, w1, w2, w3);
-        log.info("Обучение завершено. Веса: w0={}, w1={}, w2={}, w3={}",
-                String.format("%.4f", w0), String.format("%.4f", w1), String.format("%.4f", w2), String.format("%.4f", w3));
-
-        checkModelDrift(currentActive, w0, w1, w2, w3);
+    private MlModel handleSingleClassScenario(MlModel currentActive, int count1) {
         deactivateCurrentModel();
-
-        MlModel newModel = new MlModel();
-        newModel.setW0Bias(w0);
-        newModel.setW1Ee(w1);
-        newModel.setW2Dp(w2);
-        newModel.setW3Rpa(w3);
-        newModel.setTrainedAt(LocalDateTime.now());
-        newModel.setVersion("v1.0-" + LocalDate.now());
-        newModel.setActive(true);
-
+        MlModel newModel = currentActive != null ? cloneModel(currentActive) : new MlModel();
+        if (currentActive == null) {
+            newModel.setW0Bias(-0.8);
+            newModel.setW1Ee(1.2);
+            newModel.setW2Dp(1.0);
+            newModel.setW3Rpa(1.0);
+        }
+        if (count1 == 0) newModel.setW0Bias(newModel.getW0Bias() - 0.2);
+        else newModel.setW0Bias(newModel.getW0Bias() + 0.2);
         return mlModelRepository.save(newModel);
-    }
-
-    private MlModel cloneModel(MlModel source) {
-        MlModel clone = new MlModel();
-        clone.setW0Bias(source.getW0Bias());
-        clone.setW1Ee(source.getW1Ee());
-        clone.setW2Dp(source.getW2Dp());
-        clone.setW3Rpa(source.getW3Rpa());
-        clone.setTrainedAt(LocalDateTime.now());
-        clone.setVersion("v1.0-fb-" + LocalDate.now());
-        clone.setActive(true);
-        return clone;
-    }
-
-    private void evaluateModel(List<TrainingRecord> dataset, double w0, double w1, double w2, double w3) {
-        int tp = 0, tn = 0, fp = 0, fn = 0;
-        for (TrainingRecord record : dataset) {
-            double z = w0 + (w1 * record.ee) + (w2 * record.dp) + (w3 * record.rpa);
-            double prediction = com.lamart.burnout.burnoutpredictionsystem.util.MathUtils.sigmoid(z);
-            int predictedClass = prediction >= 0.6 ? 1 : 0;
-
-            if (predictedClass == 1 && record.actualBurnout == 1) tp++;
-            else if (predictedClass == 0 && record.actualBurnout == 0) tn++;
-            else if (predictedClass == 1 && record.actualBurnout == 0) fp++;
-            else fn++;
-        }
-
-        double accuracy = (double) (tp + tn) / dataset.size();
-        double precision = (tp + fp) == 0 ? 0 : (double) tp / (tp + fp);
-        double recall = (tp + fn) == 0 ? 0 : (double) tp / (tp + fn);
-        double f1Score = (precision + recall) == 0 ? 0 : 2 * (precision * recall) / (precision + recall);
-
-        log.info("=== Метрики качества модели (Eval Pipeline) ===");
-        log.info("Accuracy:  {}", String.format("%.2f", accuracy));
-        log.info("Precision: {}", String.format("%.2f", precision));
-        log.info("Recall:    {}", String.format("%.2f", recall));
-        log.info("F1-Score:  {}", String.format("%.2f", f1Score));
-        log.info("===============================================");
-    }
-
-    @Transactional
-    public void prepareDatasetAndTrain(HrSurveyUploadDto surveyDto) {
-        List<TrainingRecord> dataset = new ArrayList<>();
-
-        for (HrSurveyUploadDto.SurveyResult result : surveyDto.getResults()) {
-            UUID empId = anonymizer.hashToUuid(result.getEmail());
-            burnoutScoreRepository.findTopByEmployeeIdOrderByTargetDateDesc(empId)
-                    .ifPresent(score -> dataset.add(new TrainingRecord(
-                            score.getEeIndex(),
-                            score.getDpIndex(),
-                            score.getRpaIndex(),
-                            result.getIsBurnedOut()
-                    )));
-        }
-
-        if (dataset.size() < 7) {
-            throw new IllegalArgumentException("Недостаточно данных для обучения. Минимум: 7 (найдено: " + dataset.size() + ")");
-        }
-        trainAndActivateNewModel(dataset);
     }
 
     @Transactional
@@ -227,40 +209,46 @@ public class ModelTrainingService {
 
     @Transactional
     public void processCsvAndTrain(MultipartFile file) {
-        List<TrainingRecord> dataset = new ArrayList<>();
+        long totalActiveEmployees = employeeRepository.countByIsActiveTrue();
+        int requiredMin = (int) Math.max(7, Math.ceil(totalActiveEmployees * 0.5));
+
+        List<UUID> empIds = new ArrayList<>();
+        Map<UUID, Integer> labels = new HashMap<>();
 
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream()))) {
             String line;
             boolean isFirstLine = true;
 
             while ((line = reader.readLine()) != null) {
-                if (isFirstLine) {
-                    isFirstLine = false;
-                    continue;
-                }
-
+                if (isFirstLine) { isFirstLine = false; continue; }
                 String[] columns = line.split(",");
 
                 if (columns.length >= 2) {
-                    String hashString = columns[0].trim();
+                    UUID empId = UUID.fromString(columns[0].trim());
                     int isBurnedOut = Integer.parseInt(columns[1].trim());
 
-                    UUID empId = UUID.fromString(hashString);
-
-                    burnoutScoreRepository.findTopByEmployeeIdOrderByTargetDateDesc(empId)
-                            .ifPresent(score -> dataset.add(new TrainingRecord(
-                                    score.getEeIndex(),
-                                    score.getDpIndex(),
-                                    score.getRpaIndex(),
-                                    isBurnedOut
-                            )));
+                    empIds.add(empId);
+                    labels.put(empId, isBurnedOut);
                 }
             }
         } catch (Exception exception) {
             throw new RuntimeException("Ошибка при парсинге CSV файла: " + exception.getMessage());
         }
-        if (dataset.size() < 7) {
-            throw new IllegalArgumentException("Недостаточно данных для обучения. Найдено сопоставлений: " + dataset.size() + ". Минимум: 7");
+
+        List<BurnoutScore> latestScore = burnoutScoreRepository.findLatestScoresByEmployeeIds(empIds);
+        List<TrainingRecord> dataset = new ArrayList<>();
+        for (var score : latestScore) {
+            UUID id = score.getEmployee().getId();
+            dataset.add(new TrainingRecord(
+                    score.getEeIndex(), score.getDpIndex(), score.getRpaIndex(), labels.get(id)
+            ));
+        }
+
+        if (dataset.size() < requiredMin) {
+            throw new IllegalArgumentException(
+                    String.format("Недостаточно данных для обучения. Загружено: %d. Требуется минимум 50% от активного штата (%d), но не менее 7 человек.",
+                    dataset.size(), requiredMin)
+            );
         }
         trainAndActivateNewModel(dataset);
     }
